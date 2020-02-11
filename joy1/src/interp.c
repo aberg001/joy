@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <math.h>
+#include <setjmp.h>
 #include "globals.h"
 # ifdef GC_BDW
 #    include "gc/gc.h"
@@ -14,92 +15,92 @@
 # endif
 
 
-PRIVATE void helpdetail_();		/* this file		*/
-PRIVATE void undefs_();
-PRIVATE void make_manual(int style /* 0=plain, 1=html, 2=latex */);
-PRIVATE void manual_list_();
-PRIVATE void manual_list_aux_();
+PRIVATE void helpdetail_(p_EC ec);		/* this file		*/
+PRIVATE void undefs_(p_EC ec);
+PRIVATE void make_manual(p_EC ec, int style /* 0=plain, 1=html, 2=latex */);
+PRIVATE void manual_list_(p_EC ec);
+PRIVATE void manual_list_aux_(p_EC ec);
 
 #define ONEPARAM(NAME)						\
-    if (stk == NULL)						\
-	execerror("one parameter",NAME)
+    if (ec->stk == NULL)						\
+	execerror(ec, "one parameter",NAME)
 #define TWOPARAMS(NAME)						\
-    if (stk == NULL || stk->next == NULL)			\
-	execerror("two parameters",NAME)
+    if (ec->stk == NULL || ec->stk->next == NULL)			\
+	execerror(ec, "two parameters",NAME)
 #define THREEPARAMS(NAME)					\
-    if (stk == NULL || stk->next == NULL			\
-	    || stk->next->next == NULL)				\
-	execerror("three parameters",NAME)
+    if (ec->stk == NULL || ec->stk->next == NULL			\
+	    || ec->stk->next->next == NULL)				\
+	execerror(ec, "three parameters",NAME)
 #define FOURPARAMS(NAME)					\
-    if (stk == NULL || stk->next == NULL			\
-	    || stk->next->next == NULL				\
-	    || stk->next->next->next == NULL)			\
-	execerror("four parameters",NAME)
+    if (ec->stk == NULL || ec->stk->next == NULL			\
+	    || ec->stk->next->next == NULL				\
+	    || ec->stk->next->next->next == NULL)			\
+	execerror(ec, "four parameters",NAME)
 #define FIVEPARAMS(NAME)					\
-    if (stk == NULL || stk->next == NULL			\
-	    || stk->next->next == NULL				\
-	    || stk->next->next->next == NULL			\
-	    || stk->next->next->next->next == NULL)		\
-	execerror("four parameters",NAME)
+    if (ec->stk == NULL || ec->stk->next == NULL			\
+	    || ec->stk->next->next == NULL				\
+	    || ec->stk->next->next->next == NULL			\
+	    || ec->stk->next->next->next->next == NULL)		\
+	execerror(ec, "four parameters",NAME)
 #define ONEQUOTE(NAME)						\
-    if (stk->op != LIST_)					\
-	execerror("quotation as top parameter",NAME)		
+    if (ec->stk->op != LIST_)					\
+	execerror(ec, "quotation as top parameter",NAME)		
 #define TWOQUOTES(NAME)						\
     ONEQUOTE(NAME);						\
-    if (stk->next->op != LIST_)					\
-	execerror("quotation as second parameter",NAME)
+    if (ec->stk->next->op != LIST_)					\
+	execerror(ec, "quotation as second parameter",NAME)
 #define THREEQUOTES(NAME)					\
     TWOQUOTES(NAME);						\
-    if (stk->next->next->op != LIST_)				\
-	execerror("quotation as third parameter",NAME)
+    if (ec->stk->next->next->op != LIST_)				\
+	execerror(ec, "quotation as third parameter",NAME)
 #define FOURQUOTES(NAME)					\
     THREEQUOTES(NAME);						\
-    if (stk->next->next->next->op != LIST_)			\
-	execerror("quotation as fourth parameter",NAME)
+    if (ec->stk->next->next->next->op != LIST_)			\
+	execerror(ec, "quotation as fourth parameter",NAME)
 #define SAME2TYPES(NAME)					\
-    if (stk->op != stk->next->op)				\
-	execerror("two parameters of the same type",NAME)
+    if (ec->stk->op != ec->stk->next->op)				\
+	execerror(ec, "two parameters of the same type",NAME)
 #define STRING(NAME)						\
-    if (stk->op != STRING_)					\
-	execerror("string",NAME)
+    if (ec->stk->op != STRING_)					\
+	execerror(ec, "string",NAME)
 #define STRING2(NAME)						\
-    if (stk->next->op != STRING_)					\
-	execerror("string as second parameter",NAME)
+    if (ec->stk->next->op != STRING_)					\
+	execerror(ec, "string as second parameter",NAME)
 #define INTEGER(NAME)						\
-    if (stk->op != INTEGER_)					\
-	execerror("integer",NAME)
+    if (ec->stk->op != INTEGER_)					\
+	execerror(ec, "integer",NAME)
 #define INTEGER2(NAME)						\
-    if (stk->next->op != INTEGER_)					\
-	execerror("integer as second parameter",NAME)
+    if (ec->stk->next->op != INTEGER_)					\
+	execerror(ec, "integer as second parameter",NAME)
 #define CHARACTER(NAME)						\
-    if (stk->op != CHAR_)					\
-	execerror("character",NAME)
+    if (ec->stk->op != CHAR_)					\
+	execerror(ec, "character",NAME)
 #define INTEGERS2(NAME)						\
-    if (stk->op != INTEGER_ || stk->next->op != INTEGER_)	\
-	execerror("two integers",NAME)
+    if (ec->stk->op != INTEGER_ || ec->stk->next->op != INTEGER_)	\
+	execerror(ec, "two integers",NAME)
 #define NUMERICTYPE(NAME)					\
-    if (stk->op != INTEGER_ && stk->op !=  CHAR_		\
-	  && stk->op != BOOLEAN_ )				\
-	execerror("numeric",NAME)
+    if (ec->stk->op != INTEGER_ && ec->stk->op !=  CHAR_		\
+	  && ec->stk->op != BOOLEAN_ )				\
+	execerror(ec, "numeric",NAME)
 #define NUMERIC2(NAME)						\
-    if (stk->next->op != INTEGER_ && stk->next->op != CHAR_)	\
-	execerror("numeric second parameter",NAME)
+    if (ec->stk->next->op != INTEGER_ && ec->stk->next->op != CHAR_)	\
+	execerror(ec, "numeric second parameter",NAME)
 #define FLOATABLE						\
-    (stk->op == INTEGER_ || stk->op == FLOAT_)
+    (ec->stk->op == INTEGER_ || ec->stk->op == FLOAT_)
 #define FLOATABLE2						\
-    ((stk->op == FLOAT_ && stk->next->op == FLOAT_) ||		\
-	(stk->op == FLOAT_ && stk->next->op == INTEGER_) ||	\
-	(stk->op == INTEGER_ && stk->next->op == FLOAT_))
+    ((ec->stk->op == FLOAT_ && ec->stk->next->op == FLOAT_) ||		\
+	(ec->stk->op == FLOAT_ && ec->stk->next->op == INTEGER_) ||	\
+	(ec->stk->op == INTEGER_ && ec->stk->next->op == FLOAT_))
 #define FLOAT(NAME)						\
     if (!FLOATABLE)						\
-	execerror("float or integer", NAME);
+	execerror(ec, "float or integer", NAME);
 #define FLOAT2(NAME)						\
-    if (!(FLOATABLE2 || (stk->op == INTEGER_ && stk->next->op == INTEGER_))) \
-	execerror("two floats or integers", NAME)
+    if (!(FLOATABLE2 || (ec->stk->op == INTEGER_ && ec->stk->next->op == INTEGER_))) \
+	execerror(ec, "two floats or integers", NAME)
 #define FLOATVAL						\
-    (stk->op == FLOAT_ ? stk->u.dbl : (double) stk->u.num)
+    (ec->stk->op == FLOAT_ ? ec->stk->u.dbl : (double) ec->stk->u.num)
 #define FLOATVAL2						\
-    (stk->next->op == FLOAT_ ? stk->next->u.dbl : (double) stk->next->u.num)
+    (ec->stk->next->op == FLOAT_ ? ec->stk->next->u.dbl : (double) ec->stk->next->u.num)
 #define FLOAT_U(OPER)						\
     if (FLOATABLE) { UNARY(FLOAT_NEWNODE, OPER(FLOATVAL)); return; }
 #define FLOAT_P(OPER)						\
@@ -107,50 +108,50 @@ PRIVATE void manual_list_aux_();
 #define FLOAT_I(OPER)						\
     if (FLOATABLE2) { BINARY(FLOAT_NEWNODE, (FLOATVAL2) OPER (FLOATVAL)); return; }
 #define FILE(NAME)						\
-    if (stk->op != FILE_ || stk->u.fil == NULL)			\
-	execerror("file", NAME)
+    if (ec->stk->op != FILE_ || ec->stk->u.fil == NULL)			\
+	execerror(ec, "file", NAME)
 #define CHECKZERO(NAME)						\
-    if (stk->u.num == 0)					\
-	execerror("non-zero operand",NAME)
+    if (ec->stk->u.num == 0)					\
+	execerror(ec, "non-zero operand",NAME)
 #define LIST(NAME)						\
-    if (stk->op != LIST_)					\
-	execerror("list",NAME)
+    if (ec->stk->op != LIST_)					\
+	execerror(ec, "list",NAME)
 #define LIST2(NAME)						\
-    if (stk->next->op != LIST_)					\
-	execerror("list as second parameter",NAME)
+    if (ec->stk->next->op != LIST_)					\
+	execerror(ec, "list as second parameter",NAME)
 #define USERDEF(NAME)						\
-    if (stk->op != USR_)					\
-	execerror("user defined symbol",NAME)
+    if (ec->stk->op != USR_)					\
+	execerror(ec, "user defined symbol",NAME)
 #define CHECKLIST(OPR,NAME)					\
     if (OPR != LIST_)						\
-	execerror("internal list",NAME)
+	execerror(ec, "internal list",NAME)
 #define CHECKSETMEMBER(NODE,NAME)				\
     if ((NODE->op != INTEGER_ && NODE->op != CHAR_) || 		\
 	NODE->u.num >= SETSIZE)					\
-	execerror("small numeric",NAME)
+	execerror(ec, "small numeric",NAME)
 #define CHECKEMPTYSET(SET,NAME)					\
     if (SET == 0)						\
-	execerror("non-empty set",NAME)
+	execerror(ec, "non-empty set",NAME)
 #define CHECKEMPTYSTRING(STRING,NAME)				\
     if (*STRING == '\0')					\
-	execerror("non-empty string",NAME)
+	execerror(ec, "non-empty string",NAME)
 #define CHECKEMPTYLIST(LIST,NAME)				\
     if (LIST == NULL)						\
-	execerror("non-empty list",NAME)
+	execerror(ec, "non-empty list",NAME)
 #define INDEXTOOLARGE(NAME)					\
-    execerror("smaller index",NAME)
+    execerror(ec, "smaller index",NAME)
 #define BADAGGREGATE(NAME)					\
-    execerror("aggregate parameter",NAME)
+    execerror(ec, "aggregate parameter",NAME)
 #define BADDATA(NAME)						\
-    execerror("different type",NAME)
+    execerror(ec, "different type",NAME)
 
-#define DMP dump->u.lis
-#define DMP1 dump1->u.lis
-#define DMP2 dump2->u.lis
-#define DMP3 dump3->u.lis
-#define DMP4 dump4->u.lis
-#define DMP5 dump5->u.lis
-#define SAVESTACK  dump = LIST_NEWNODE(stk,dump)
+#define DMP ec->dump->u.lis
+#define DMP1 ec->dump1->u.lis
+#define DMP2 ec->dump2->u.lis
+#define DMP3 ec->dump3->u.lis
+#define DMP4 ec->dump4->u.lis
+#define DMP5 ec->dump5->u.lis
+#define SAVESTACK  ec->dump = LIST_NEWNODE(ec->stk,ec->dump)
 #define SAVED1 DMP
 #define SAVED2 DMP->next
 #define SAVED3 DMP->next->next
@@ -161,368 +162,392 @@ PRIVATE void manual_list_aux_();
 #define POP(X) X = X->next
 
 #define NULLARY(CONSTRUCTOR,VALUE)                                     \
-    stk = CONSTRUCTOR(VALUE, stk)
+    ec->stk = CONSTRUCTOR(VALUE, ec->stk)
 #define UNARY(CONSTRUCTOR,VALUE)                                       \
-    stk = CONSTRUCTOR(VALUE, stk->next)
+    ec->stk = CONSTRUCTOR(VALUE, ec->stk->next)
 #define BINARY(CONSTRUCTOR,VALUE)                                      \
-    stk = CONSTRUCTOR(VALUE, stk->next->next)
+    ec->stk = CONSTRUCTOR(VALUE, ec->stk->next->next)
 #define GNULLARY(TYPE,VALUE)                                    \
-    stk = newnode(TYPE,(VALUE),stk)
+    ec->stk = newnode(ec, TYPE, (VALUE), ec->stk)
 #define GUNARY(TYPE,VALUE)                                      \
-    stk = newnode(TYPE,(VALUE),stk->next)
+    ec->stk = newnode(ec, TYPE, (VALUE), ec->stk->next)
 #define GBINARY(TYPE,VALUE)                                     \
-    stk = newnode(TYPE,(VALUE),stk->next->next)
+    ec->stk = newnode(ec, TYPE, (VALUE), ec->stk->next->next)
 #define GTERNARY(TYPE,VALUE)					\
-    stk = newnode(TYPE,(VALUE),stk->next->next->next)
+    ec->stk = newnode(ec, TYPE, (VALUE), ec->stk->next->next->next)
 
 #define GETSTRING(NODE)						\
   ( NODE->op == STRING_  ?  NODE->u.str :			\
    (NODE->op == USR_  ?  NODE->u.ent->name :			\
-    opername(NODE->op) ) )
+    opername(ec, NODE->op) ) )
 
 /* - - - -  O P E R A N D S   - - - - */
 
 #define PUSH(PROCEDURE,CONSTRUCTOR,VALUE)				\
-PRIVATE void PROCEDURE()					\
+PRIVATE void PROCEDURE(p_EC ec)					\
 {   NULLARY(CONSTRUCTOR,VALUE); }
-PUSH(true_,BOOLEAN_NEWNODE,1L)				/* constants	*/
-PUSH(false_,BOOLEAN_NEWNODE,0L)
-PUSH(setsize_,INTEGER_NEWNODE,(long)SETSIZE)
-PUSH(maxint_,INTEGER_NEWNODE,(long)MAXINT)
-PUSH(symtabmax_,INTEGER_NEWNODE,(long)SYMTABMAX)
-PUSH(memorymax_,INTEGER_NEWNODE,(long)MEMORYMAX)
+PUSH(true_, BOOLEAN_NEWNODE, 1L)				/* constants	*/
+PUSH(false_, BOOLEAN_NEWNODE, 0L)
+PUSH(setsize_, INTEGER_NEWNODE, (long)SETSIZE)
+PUSH(maxint_, INTEGER_NEWNODE, (long)MAXINT)
+PUSH(symtabmax_, INTEGER_NEWNODE, (long)SYMTABMAX)
+PUSH(memorymax_, INTEGER_NEWNODE, (long)MEMORYMAX)
 PUSH(stdin_, FILE_NEWNODE, stdin)
 PUSH(stdout_, FILE_NEWNODE, stdout)
 PUSH(stderr_, FILE_NEWNODE, stderr)
-PUSH(dump_,LIST_NEWNODE,dump)				/* variables	*/
-PUSH(conts_,LIST_NEWNODE,LIST_NEWNODE(conts->u.lis->next,conts->next))
-PUSH(symtabindex_,INTEGER_NEWNODE,(long)LOC2INT(symtabindex))
+PUSH(dump_, LIST_NEWNODE, ec->dump)				/* variables	*/
+PUSH(conts_, LIST_NEWNODE, LIST_NEWNODE(ec->conts->u.lis->next, ec->conts->next))
+PUSH(symtabindex_, INTEGER_NEWNODE, (long)LOC2INT(ec->symtabindex))
 PUSH(rand_, INTEGER_NEWNODE, (long)rand())
 /* this is now in utils.c
-PUSH(memoryindex_,INTEGER_NEWNODE,MEM2INT(memoryindex))
+PUSH(memoryindex_, INTEGER_NEWNODE, MEM2INT(memoryindex))
 */
-PUSH(echo_,INTEGER_NEWNODE,(long)echoflag)
-PUSH(autoput_,INTEGER_NEWNODE,(long)autoput)
-PUSH(undeferror_,INTEGER_NEWNODE,(long)undeferror)
-PUSH(clock_,INTEGER_NEWNODE,(long)(clock() - startclock))
-PUSH(time_,INTEGER_NEWNODE,(long)time(NULL))
-PUSH(argc_,INTEGER_NEWNODE,(long)g_argc)
+PUSH(echo_, INTEGER_NEWNODE, (long)ec->echoflag)
+PUSH(autoput_, INTEGER_NEWNODE, (long)ec->autoput)
+PUSH(undeferror_, INTEGER_NEWNODE, (long)ec->undeferror)
+PUSH(clock_, INTEGER_NEWNODE, (long)(clock() - ec->startclock))
+PUSH(time_, INTEGER_NEWNODE, (long)time(NULL))
+PUSH(argc_, INTEGER_NEWNODE, (long)ec->g_argc)
 
-PUBLIC void stack_(void)
-{ NULLARY(LIST_NEWNODE, stk); }
+PUBLIC void stack_(p_EC ec) { 
+  NULLARY(LIST_NEWNODE, ec->stk);
+}
 
 /* - - - - -   O P E R A T O R S   - - - - - */
 
-PRIVATE void id_()
-{
+PRIVATE void id_(p_EC ec) {
     /* do nothing */
 }
-PRIVATE void unstack_()
-{
+PRIVATE void unstack_(p_EC ec) {
     ONEPARAM("unstack");
     LIST("unstack");
-    stk = stk->u.lis;
+    ec->stk = ec->stk->u.lis;
 }
 /*
-PRIVATE void newstack_()
-{
-    stk = NULL;
+PRIVATE void newstack_(p_EC ec) {
+    ec->stk = NULL;
 }
 */
 
 /* - - -   STACK   - - - */
 
-PRIVATE void name_()
-{
-    ONEPARAM("name");
-    UNARY(STRING_NEWNODE, stk->op == USR_ ?
-		   stk->u.ent->name : opername(stk->op));
+PRIVATE void name_(p_EC ec) {
+  ONEPARAM("name");
+  UNARY(STRING_NEWNODE, 
+      ec->stk->op == USR_ ? ec->stk->u.ent->name : opername(ec, ec->stk->op));
 }
 
-PRIVATE void intern_()
-{   char *p;
-    ONEPARAM("intern");
-    STRING("intern");
-    strcpy(id, stk->u.str);
-    hashvalue = 0;
-    for (p = id; *p; p++) hashvalue += *p;
-    hashvalue %= HASHSIZE;
-    lookup();
-    if (location < firstlibra)
-	{ bucket.proc = location->u.proc;
-	GUNARY(LOC2INT(location), bucket); }
-	else UNARY(USR_NEWNODE, location);
+PRIVATE void intern_(p_EC ec) {
+  char *p;
+  ONEPARAM("intern");
+  STRING("intern");
+  strcpy(ec->id, ec->stk->u.str);
+  ec->hashvalue = 0;
+  for (p = ec->id; *p; p++) ec->hashvalue += *p;
+  ec->hashvalue %= HASHSIZE;
+  lookup(ec);
+  if (ec->location < ec->firstlibra) {
+    ec->bucket.proc = ec->location->u.proc;
+    GUNARY(LOC2INT(ec->location), ec->bucket); 
+  }
+  else 
+    UNARY(USR_NEWNODE, ec->location);
 }
 
-PRIVATE void getenv_()
-{   ONEPARAM("getenv");
-    STRING("getenv");
-    UNARY(STRING_NEWNODE, getenv(stk->u.str)); }
-
-PRIVATE void body_()
-{
-    ONEPARAM("body");
-    USERDEF("body");
-    UNARY(LIST_NEWNODE,stk->u.ent->u.body);
-}
-PRIVATE void pop_()
-{
-    ONEPARAM("pop");
-    POP(stk);
-}
-PRIVATE void swap_()
-{
-    TWOPARAMS("swap");
-    SAVESTACK;
-    GBINARY(SAVED1->op,SAVED1->u);
-    GNULLARY(SAVED2->op,SAVED2->u);
-    POP(dump);
-}
-PRIVATE void rollup_()
-{
-    THREEPARAMS("rollup");
-    SAVESTACK;
-    GTERNARY(SAVED1->op,SAVED1->u);
-    GNULLARY(SAVED3->op,SAVED3->u);
-    GNULLARY(SAVED2->op,SAVED2->u);
-    POP(dump);
-}
-PRIVATE void rolldown_()
-{
-    THREEPARAMS("rolldown");
-    SAVESTACK;
-    GTERNARY(SAVED2->op,SAVED2->u);
-    GNULLARY(SAVED1->op,SAVED1->u);
-    GNULLARY(SAVED3->op,SAVED3->u);
-    POP(dump);
-}
-PRIVATE void rotate_()
-{
-    THREEPARAMS("rotate");
-    SAVESTACK;
-    GTERNARY(SAVED1->op,SAVED1->u);
-    GNULLARY(SAVED2->op,SAVED2->u);
-    GNULLARY(SAVED3->op,SAVED3->u);
-    POP(dump);
+PRIVATE void getenv_(p_EC ec) {
+  ONEPARAM("getenv");
+  STRING("getenv");
+  UNARY(STRING_NEWNODE, getenv(ec->stk->u.str)); 
 }
 
-PRIVATE void dup_()
-{
-    ONEPARAM("dup");
-    GNULLARY(stk->op,stk->u);
+PRIVATE void body_(p_EC ec) {
+  ONEPARAM("body");
+  USERDEF("body");
+  UNARY(LIST_NEWNODE, ec->stk->u.ent->u.body);
 }
 
-#define DIPPED(PROCEDURE,NAME,PARAMCOUNT,ARGUMENT)              \
-PRIVATE void PROCEDURE()                                        \
-{   PARAMCOUNT(NAME);                                           \
+PRIVATE void pop_(p_EC ec) {
+  ONEPARAM("pop");
+  POP(ec->stk);
+}
+
+PRIVATE void swap_(p_EC ec) {
+  TWOPARAMS("swap");
+  SAVESTACK;
+  GBINARY(SAVED1->op, SAVED1->u);
+  GNULLARY(SAVED2->op, SAVED2->u);
+  POP(ec->dump);
+}
+
+PRIVATE void rollup_(p_EC ec) {
+  THREEPARAMS("rollup");
+  SAVESTACK;
+  GTERNARY(SAVED1->op, SAVED1->u);
+  GNULLARY(SAVED3->op, SAVED3->u);
+  GNULLARY(SAVED2->op, SAVED2->u);
+  POP(ec->dump);
+}
+
+PRIVATE void rolldown_(p_EC ec) {
+  THREEPARAMS("rolldown");
+  SAVESTACK;
+  GTERNARY(SAVED2->op, SAVED2->u);
+  GNULLARY(SAVED1->op, SAVED1->u);
+  GNULLARY(SAVED3->op, SAVED3->u);
+  POP(ec->dump);
+}
+
+PRIVATE void rotate_(p_EC ec) {
+  THREEPARAMS("rotate");
+  SAVESTACK;
+  GTERNARY(SAVED1->op, SAVED1->u);
+  GNULLARY(SAVED2->op, SAVED2->u);
+  GNULLARY(SAVED3->op, SAVED3->u);
+  POP(ec->dump);
+}
+
+PRIVATE void dup_(p_EC ec) {
+  ONEPARAM("dup");
+  GNULLARY(ec->stk->op, ec->stk->u);
+}
+
+#define DIPPED(PROCEDURE, NAME, PARAMCOUNT, ARGUMENT)              \
+PRIVATE void PROCEDURE(p_EC ec) {                               \
+    PARAMCOUNT(NAME);                                           \
     SAVESTACK;                                                  \
-    POP(stk);                                                   \
-    ARGUMENT();                                                 \
-    GNULLARY(SAVED1->op,SAVED1->u);                             \
-    POP(dump);                                                  \
+    POP(ec->stk);                                                   \
+    ARGUMENT(ec);                                                 \
+    GNULLARY(SAVED1->op, SAVED1->u);                             \
+    POP(ec->dump);                                                  \
 }
-DIPPED(popd_,"popd",TWOPARAMS,pop_)
-DIPPED(dupd_,"dupd",TWOPARAMS,dup_)
-DIPPED(swapd_,"swapd",THREEPARAMS,swap_)
-DIPPED(rolldownd_,"rolldownd",FOURPARAMS,rolldown_)
-DIPPED(rollupd_,"rollupd",FOURPARAMS,rollup_)
-DIPPED(rotated_,"rotated",FOURPARAMS,rotate_)
+DIPPED(popd_, "popd", TWOPARAMS, pop_)
+DIPPED(dupd_, "dupd", TWOPARAMS, dup_)
+DIPPED(swapd_, "swapd", THREEPARAMS, swap_)
+DIPPED(rolldownd_, "rolldownd", FOURPARAMS, rolldown_)
+DIPPED(rollupd_, "rollupd", FOURPARAMS, rollup_)
+DIPPED(rotated_, "rotated", FOURPARAMS, rotate_)
 
 /* - - -   BOOLEAN   - - - */
 
-#define ANDORXOR(PROCEDURE,NAME,OPER1,OPER2)			\
-PRIVATE void PROCEDURE()					\
-{   TWOPARAMS(NAME);						\
+#define ANDORXOR(PROCEDURE, NAME, OPER1, OPER2)			\
+PRIVATE void PROCEDURE(p_EC ec)	{				\
+    TWOPARAMS(NAME);						\
     SAME2TYPES(NAME);						\
-    switch (stk->next->op)					\
-      { case SET_:						\
-	    BINARY(SET_NEWNODE,(long)(stk->next->u.set OPER1 stk->u.set));	\
+    switch (ec->stk->next->op) {				\
+        case SET_:						\
+	    BINARY(SET_NEWNODE, (long)(ec->stk->next->u.set OPER1 ec->stk->u.set));	\
 	    return;						\
 	case BOOLEAN_: case CHAR_: case INTEGER_: case LIST_:	\
-	    BINARY(BOOLEAN_NEWNODE,(long)(stk->next->u.num OPER2 stk->u.num));	\
+	    BINARY(BOOLEAN_NEWNODE, (long)(ec->stk->next->u.num OPER2 ec->stk->u.num));	\
 	    return;						\
 	default:						\
 	    BADDATA(NAME); } }
-ANDORXOR(and_,"and",&,&&)
-ANDORXOR(or_,"or",|,||)
-ANDORXOR(xor_,"xor",^,!=)
+ANDORXOR(and_, "and", &, &&)
+ANDORXOR(or_, "or", |, ||)
+ANDORXOR(xor_, "xor", ^, !=)
 
 
 /* - - -   INTEGER   - - - */
 
-#define ORDCHR(PROCEDURE,NAME,RESULTTYP)			\
-PRIVATE void PROCEDURE()					\
-{   ONEPARAM(NAME);						\
+#define ORDCHR(PROCEDURE, NAME, RESULTTYP)			\
+PRIVATE void PROCEDURE(p_EC ec)	{				\
+    ONEPARAM(NAME);						\
     NUMERICTYPE(NAME);						\
-    UNARY(RESULTTYP,stk->u.num);				\
+    UNARY(RESULTTYP, ec->stk->u.num);				\
 }
-ORDCHR(ord_,"ord",INTEGER_NEWNODE)
-ORDCHR(chr_,"chr",CHAR_NEWNODE)
+ORDCHR(ord_, "ord", INTEGER_NEWNODE)
+ORDCHR(chr_, "chr", CHAR_NEWNODE)
 
-PRIVATE void abs_()
-{
-    ONEPARAM("abs");
-/* start new */
-    FLOAT("abs");
-    if (stk->op == INTEGER_)
-      { if (stk->u.num >= 0) return;
-        else { UNARY(INTEGER_NEWNODE, - stk->u.num); return; } }
-/* end new */
-    FLOAT_U(fabs);
-    INTEGER("abs");
-    if (stk->u.num < 0) UNARY(INTEGER_NEWNODE, - stk->u.num);
+PRIVATE void abs_(p_EC ec) {
+  ONEPARAM("abs");
+  /* start new */
+  FLOAT("abs");
+  if (ec->stk->op == INTEGER_) { 
+    if (ec->stk->u.num >= 0) 
+      return;
+    else { 
+      UNARY(INTEGER_NEWNODE, - ec->stk->u.num); 
+      return; 
+    } 
+  }
+  /* end new */
+  FLOAT_U(fabs);
+  INTEGER("abs");
+  if (ec->stk->u.num < 0) 
+    UNARY(INTEGER_NEWNODE, - ec->stk->u.num);
 }
-PRIVATE double fsgn(double f)
-{   if (f < 0) return -1.0;
-    else if (f > 0) return 1.0;
-    else return 0.0;
+
+PRIVATE double fsgn(double f) {
+  if (f < 0)
+    return -1.0;
+  else 
+    if (f > 0) 
+      return 1.0;
+    else 
+      return 0.0;
 }
-PRIVATE void sign_()
-{
-    ONEPARAM("sign");
-/* start new */
-    FLOAT("sign");
-    if (stk->op == INTEGER_)
-      { long i = stk->u.num;
-	if (i == 0 || i == 1) return;
-	else { UNARY(INTEGER_NEWNODE, i > 0 ? 1 : -1); return; } }
-/* end new */
-    FLOAT_U(fsgn);
-    INTEGER("sign");
-    if (stk->u.num < 0) UNARY(INTEGER_NEWNODE,-1L);
-    else if (stk->u.num > 0) UNARY(INTEGER_NEWNODE,1L);
+
+PRIVATE void sign_(p_EC ec) {
+  ONEPARAM("sign");
+  /* start new */
+  FLOAT("sign");
+  if (ec->stk->op == INTEGER_) { 
+    long i = ec->stk->u.num;
+    if (i == 0 || i == 1) 
+      return;
+    else { 
+      UNARY(INTEGER_NEWNODE, i > 0 ? 1 : -1);
+      return; 
+    } 
+  }
+  /* end new */
+  FLOAT_U(fsgn);
+  INTEGER("sign");
+  if (ec->stk->u.num < 0)
+    UNARY(INTEGER_NEWNODE, -1L);
+  else 
+    if (ec->stk->u.num > 0)
+      UNARY(INTEGER_NEWNODE, 1L);
 }
-PRIVATE void neg_()
-{
-    ONEPARAM("neg");
-    FLOAT_U(-);
-    INTEGER("neg");
-    UNARY(INTEGER_NEWNODE, -stk->u.num);
+
+PRIVATE void neg_(p_EC ec) {
+  ONEPARAM("neg");
+  FLOAT_U(-);
+  INTEGER("neg");
+  UNARY(INTEGER_NEWNODE, -ec->stk->u.num);
 }
 
 /* probably no longer needed:
-#define MULDIV(PROCEDURE,NAME,OPER,CHECK)			\
-PRIVATE void PROCEDURE()					\
-{   TWOPARAMS(NAME);						\
+#define MULDIV(PROCEDURE, NAME, OPER, CHECK)			\
+PRIVATE void PROCEDURE(p_EC ec)	{				\
+    TWOPARAMS(NAME);						\
     FLOAT_I(OPER);						\
     INTEGERS2(NAME);						\
     CHECK;							\
-    BINARY(INTEGER_NEWNODE,stk->next->u.num OPER stk->u.num); }
-MULDIV(mul_,"*",*,)
-MULDIV(divide_,"/",/,CHECKZERO("/"))
+    BINARY(INTEGER_NEWNODE, ec->stk->next->u.num OPER ec->stk->u.num); }
+MULDIV(mul_, "*", *,)
+MULDIV(divide_, "/", /, CHECKZERO("/"))
 */
-PRIVATE void mul_()
-{   TWOPARAMS("*");
-    FLOAT_I(*);
-    INTEGERS2("*");
-    BINARY(INTEGER_NEWNODE,stk->next->u.num * stk->u.num);
-}
-PRIVATE void divide_()
-{   TWOPARAMS("/");
-    if (stk->op == FLOAT_   && stk->u.dbl == 0.0  ||
-	stk->op == INTEGER_ && stk->u.num == 0)
-      execerror("non-zero divisor","/");
-    FLOAT_I(/);
-    INTEGERS2("/");
-    BINARY(INTEGER_NEWNODE,stk->next->u.num / stk->u.num);
+
+PRIVATE void mul_(p_EC ec) {
+  TWOPARAMS("*");
+  FLOAT_I(*);
+  INTEGERS2("*");
+  BINARY(INTEGER_NEWNODE, ec->stk->next->u.num * ec->stk->u.num);
 }
 
-PRIVATE void rem_()
-{   TWOPARAMS("rem");
-    FLOAT_P(fmod);
-    INTEGERS2("rem");
-    CHECKZERO("rem");
-    BINARY(INTEGER_NEWNODE,stk->next->u.num % stk->u.num); }
+PRIVATE void divide_(p_EC ec) {
+  TWOPARAMS("/");
+  if ((ec->stk->op == FLOAT_   && ec->stk->u.dbl == 0.0)  ||
+      (ec->stk->op == INTEGER_ && ec->stk->u.num == 0))
+    execerror(ec, "non-zero divisor", "/");
+  FLOAT_I(/);
+  INTEGERS2("/");
+  BINARY(INTEGER_NEWNODE, ec->stk->next->u.num / ec->stk->u.num);
+}
 
+PRIVATE void rem_(p_EC ec) {
+  TWOPARAMS("rem");
+  FLOAT_P(fmod);
+  INTEGERS2("rem");
+  CHECKZERO("rem");
+  BINARY(INTEGER_NEWNODE, ec->stk->next->u.num % ec->stk->u.num); 
+}
 
-PRIVATE void div_()
-{   ldiv_t result;
-    TWOPARAMS("div");
-    INTEGERS2("div");
-    CHECKZERO("div");
-    result = ldiv(stk->next->u.num, stk->u.num);
-    BINARY(INTEGER_NEWNODE, result.quot);
-    NULLARY(INTEGER_NEWNODE, result.rem); }
+PRIVATE void div_(p_EC ec) {
+  ldiv_t result;
+  TWOPARAMS("div");
+  INTEGERS2("div");
+  CHECKZERO("div");
+  result = ldiv(ec->stk->next->u.num, ec->stk->u.num);
+  BINARY(INTEGER_NEWNODE, result.quot);
+  NULLARY(INTEGER_NEWNODE, result.rem); 
+}
 
-PRIVATE void strtol_()
-{   TWOPARAMS("strtol");
-    SAVESTACK;
-    INTEGER("strtol");
-    POP(stk);
-    STRING("strtol");
-    UNARY(INTEGER_NEWNODE, strtol(SAVED2->u.str, NULL, SAVED1->u.num));
-    POP(dump); }
+PRIVATE void strtol_(p_EC ec) {
+  TWOPARAMS("strtol");
+  SAVESTACK;
+  INTEGER("strtol");
+  POP(ec->stk);
+  STRING("strtol");
+  UNARY(INTEGER_NEWNODE, strtol(SAVED2->u.str, NULL, SAVED1->u.num));
+  POP(ec->dump); 
+}
 
-PRIVATE void strtod_()
-{   ONEPARAM("strtod");
-    STRING("strtod");
-    UNARY(FLOAT_NEWNODE, strtod(stk->u.str, NULL)); }
+PRIVATE void strtod_(p_EC ec) {
+  ONEPARAM("strtod");
+  STRING("strtod");
+  UNARY(FLOAT_NEWNODE, strtod(ec->stk->u.str, NULL)); 
+}
 
-PRIVATE void format_()
-{   int width, prec;
-    char spec;
-    char format[7];
-    char *result;
-    FOURPARAMS("format");
-    INTEGER("format");
-    INTEGER2("format");
-    prec = stk->u.num;
-    POP(stk);
-    width = stk->u.num;
-    POP(stk);
-    CHARACTER("format");
-    spec = stk->u.num;
-    POP(stk);
-    if (!strchr("dioxX", spec))
-	execerror("one of: d i o x X", "format");
-    strcpy(format, "%*.*ld");
-    format[5] = spec;
-    result = malloc(INPLINEMAX);			/* should be sufficient */
-    NUMERICTYPE("format");
-    sprintf(result, format, width, prec, stk->u.num);
-    UNARY(STRING_NEWNODE, result);
-    return; }
+PRIVATE void format_(p_EC ec) {
+  int width, prec;
+  char spec;
+  char format[7];
+  char *result;
+  FOURPARAMS("format");
+  INTEGER("format");
+  INTEGER2("format");
+  prec = ec->stk->u.num;
+  POP(ec->stk);
+  width = ec->stk->u.num;
+  POP(ec->stk);
+  CHARACTER("format");
+  spec = ec->stk->u.num;
+  POP(ec->stk);
+  if (!strchr("dioxX", spec))
+    execerror(ec, "one of: d i o x X", "format");
+  strcpy(format, "%*.*ld");
+  format[5] = spec;
+  result = malloc(INPLINEMAX);			/* should be sufficient */
+  NUMERICTYPE("format");
+  sprintf(result, format, width, prec, ec->stk->u.num);
+  UNARY(STRING_NEWNODE, result);
+  return; 
+}
 
-PRIVATE void formatf_()
-{   int width, prec;
-    char spec;
-    char format[7];
-    char *result;
-    FOURPARAMS("format");
-    INTEGER("format");
-    INTEGER2("format");
-    prec = stk->u.num;
-    POP(stk);
-    width = stk->u.num;
-    POP(stk);
-    CHARACTER("format");
-    spec = stk->u.num;
-    POP(stk);
-    if (!strchr("eEfgG", spec))
-	execerror("one of: e E f g G", "format");
-    strcpy(format, "%*.*lg");
-    format[5] = spec;
-    result = malloc(INPLINEMAX);			/* should be sufficient */
-    FLOAT("formatf");
-    sprintf(result, format, width, prec, stk->u.dbl);
-    UNARY(STRING_NEWNODE, result);
-    return; }
+PRIVATE void formatf_(p_EC ec) {
+  int width, prec;
+  char spec;
+  char format[7];
+  char *result;
+  FOURPARAMS("format");
+  INTEGER("format");
+  INTEGER2("format");
+  prec = ec->stk->u.num;
+  POP(ec->stk);
+  width = ec->stk->u.num;
+  POP(ec->stk);
+  CHARACTER("format");
+  spec = ec->stk->u.num;
+  POP(ec->stk);
+  if (!strchr("eEfgG", spec))
+    execerror(ec, "one of: e E f g G", "format");
+  strcpy(format, "%*.*lg");
+  format[5] = spec;
+  result = malloc(INPLINEMAX);			/* should be sufficient */
+  FLOAT("formatf");
+  sprintf(result, format, width, prec, ec->stk->u.dbl);
+  UNARY(STRING_NEWNODE, result);
+  return; 
+}
 
 
 /* - - -   TIME   - - - */
 
-#define UNMKTIME(PROCEDURE,NAME,FUNC)				\
-PRIVATE void PROCEDURE()					\
-{   struct tm *t;						\
+#define UNMKTIME(PROCEDURE, NAME, FUNC)				\
+PRIVATE void PROCEDURE(p_EC ec) {				\
+    struct tm *t;						\
     long wday;							\
     time_t timval;						\
     ONEPARAM(NAME);						\
     INTEGER(NAME);						\
-    timval = stk->u.num;					\
+    timval = ec->stk->u.num;					\
     t = FUNC(&timval);						\
     wday = t->tm_wday;						\
-    if (wday == 0) wday = 7;					\
-    dump1 = LIST_NEWNODE(NULL, dump1);			\
+    if (wday == 0) 						\
+        wday = 7;					\
+    ec->dump1 = LIST_NEWNODE(NULL, ec->dump1);			\
     DMP1 = INTEGER_NEWNODE(wday, DMP1);		\
     DMP1 = INTEGER_NEWNODE((long)t->tm_yday, DMP1);	\
     DMP1 = BOOLEAN_NEWNODE((long)t->tm_isdst, DMP1);	\
@@ -533,155 +558,180 @@ PRIVATE void PROCEDURE()					\
     DMP1 = INTEGER_NEWNODE((long)(t->tm_mon + 1), DMP1); \
     DMP1 = INTEGER_NEWNODE((long)(t->tm_year + 1900), DMP1); \
     UNARY(LIST_NEWNODE, DMP1);						\
-    POP(dump1);							\
-    return; }
-UNMKTIME(localtime_,"localtime",localtime)
-UNMKTIME(gmtime_,"gmtime",gmtime)
+    POP(ec->dump1);							\
+    return; 							\
+}
 
-PRIVATE void decode_time(struct tm *t)
-{   Node *p;
-    t->tm_year = t->tm_mon = t->tm_mday =
-	t->tm_hour = t->tm_min = t->tm_sec = t->tm_isdst =
-	t->tm_yday = t->tm_wday = 0;
-    p = stk->u.lis;
-    if (p && p->op == INTEGER_)
-	{ t->tm_year = p->u.num - 1900; POP(p); }
-    if (p && p->op == INTEGER_)
-	{ t->tm_mon = p->u.num - 1; POP(p); }
-    if (p && p->op == INTEGER_)
-	{ t->tm_mday = p->u.num; POP(p); }
-    if (p && p->op == INTEGER_)
-	{ t->tm_hour = p->u.num; POP(p); }
-    if (p && p->op == INTEGER_)
-	{ t->tm_min = p->u.num; POP(p); }
-    if (p && p->op == INTEGER_)
-	{ t->tm_sec = p->u.num; POP(p); }
-    if (p && p->op == BOOLEAN_)
-	{ t->tm_isdst = p->u.num; POP(p); }
-    if (p && p->op == INTEGER_)
-	{ t->tm_yday = p->u.num; POP(p); }
-    if (p && p->op == INTEGER_)
-	{ t->tm_wday = p->u.num; POP(p); }
-    return; }
+UNMKTIME(localtime_, "localtime", localtime)
+UNMKTIME(gmtime_, "gmtime", gmtime)
 
-PRIVATE void mktime_()
-{   struct tm t;
-    ONEPARAM("mktime");
-    LIST("mktime");
-    decode_time(&t);
-    UNARY(INTEGER_NEWNODE, (long)mktime(&t));
-    return; }
+PRIVATE void decode_time(p_EC ec, struct tm *t) {
+  Node *p;
+  t->tm_year = t->tm_mon = t->tm_mday =
+    t->tm_hour = t->tm_min = t->tm_sec = t->tm_isdst =
+    t->tm_yday = t->tm_wday = 0;
+  p = ec->stk->u.lis;
+  if (p && p->op == INTEGER_) {
+    t->tm_year = p->u.num - 1900;
+    POP(p); 
+  }
+  if (p && p->op == INTEGER_) {
+    t->tm_mon = p->u.num - 1;
+    POP(p); 
+  }
+  if (p && p->op == INTEGER_) {
+    t->tm_mday = p->u.num;
+    POP(p); 
+  }
+  if (p && p->op == INTEGER_) {
+    t->tm_hour = p->u.num;
+    POP(p); 
+  }
+  if (p && p->op == INTEGER_) {
+    t->tm_min = p->u.num;
+    POP(p); 
+  }
+  if (p && p->op == INTEGER_) {
+    t->tm_sec = p->u.num;
+    POP(p); 
+  }
+  if (p && p->op == BOOLEAN_) {
+    t->tm_isdst = p->u.num;
+    POP(p); 
+  }
+  if (p && p->op == INTEGER_) {
+    t->tm_yday = p->u.num;
+    POP(p); 
+  }
+  if (p && p->op == INTEGER_) {
+    t->tm_wday = p->u.num;
+    POP(p); 
+  }
+  return; 
+}
 
-PRIVATE void strftime_()
-{   struct tm t;
-    char *fmt;
-    char *result;
-    size_t length;
-    TWOPARAMS("strftime");
-    STRING("strftime");
-    fmt = stk->u.str;
-    POP(stk);
-    LIST("strftime");
-    decode_time(&t);
-    length = strlen(fmt) * 3 + 1;		/* should be sufficient */
-    result = malloc(length);
-    strftime(result, length, fmt, &t);
-    UNARY(STRING_NEWNODE, result);
-    return; }
+PRIVATE void mktime_(p_EC ec) {
+  struct tm t;
+  ONEPARAM("mktime");
+  LIST("mktime");
+  decode_time(ec, &t);
+  UNARY(INTEGER_NEWNODE, (long)mktime(&t));
+  return; 
+}
+
+PRIVATE void strftime_(p_EC ec) {
+  struct tm t;
+  char *fmt;
+  char *result;
+  size_t length;
+  TWOPARAMS("strftime");
+  STRING("strftime");
+  fmt = ec->stk->u.str;
+  POP(ec->stk);
+  LIST("strftime");
+  decode_time(ec, &t);
+  length = strlen(fmt) * 3 + 1;		/* should be sufficient */
+  result = malloc(length);
+  strftime(result, length, fmt, &t);
+  UNARY(STRING_NEWNODE, result);
+  return; 
+}
 
 /* - - -   FLOAT   - - - */
 
-#define UFLOAT(PROCEDURE,NAME,FUNC)				\
-PRIVATE void PROCEDURE()					\
-{   ONEPARAM(NAME);						\
+#define UFLOAT(PROCEDURE, NAME, FUNC)				\
+PRIVATE void PROCEDURE(p_EC ec)	{				\
+    ONEPARAM(NAME);						\
     FLOAT(NAME);						\
     UNARY(FLOAT_NEWNODE, FUNC(FLOATVAL));				\
     return; }
-UFLOAT(acos_,"acos",acos)
-UFLOAT(asin_,"asin",asin)
-UFLOAT(atan_,"atan",atan)
-UFLOAT(ceil_,"ceil",ceil)
-UFLOAT(cos_,"cos",cos)
-UFLOAT(cosh_,"cosh",cosh)
-UFLOAT(exp_,"exp",exp)
-UFLOAT(floor_,"floor",floor)
-UFLOAT(log_,"log",log)
-UFLOAT(log10_,"log10",log10)
-UFLOAT(sin_,"sin",sin)
-UFLOAT(sinh_,"sinh",sinh)
-UFLOAT(sqrt_,"sqrt",sqrt)
-UFLOAT(tan_,"tan",tan)
-UFLOAT(tanh_,"tanh",tanh)
+UFLOAT(acos_, "acos", acos)
+UFLOAT(asin_, "asin", asin)
+UFLOAT(atan_, "atan", atan)
+UFLOAT(ceil_, "ceil", ceil)
+UFLOAT(cos_, "cos", cos)
+UFLOAT(cosh_, "cosh", cosh)
+UFLOAT(exp_, "exp", exp)
+UFLOAT(floor_, "floor", floor)
+UFLOAT(log_, "log", log)
+UFLOAT(log10_, "log10", log10)
+UFLOAT(sin_, "sin", sin)
+UFLOAT(sinh_, "sinh", sinh)
+UFLOAT(sqrt_, "sqrt", sqrt)
+UFLOAT(tan_, "tan", tan)
+UFLOAT(tanh_, "tanh", tanh)
 
-#define BFLOAT(PROCEDURE,NAME,FUNC)				\
-PRIVATE void PROCEDURE()					\
-{   TWOPARAMS(NAME);						\
+#define BFLOAT(PROCEDURE, NAME, FUNC)				\
+PRIVATE void PROCEDURE(p_EC ec)	{				\
+    TWOPARAMS(NAME);						\
     FLOAT2(NAME);						\
     BINARY(FLOAT_NEWNODE, FUNC(FLOATVAL2, FLOATVAL));			\
     return; }
-BFLOAT(atan2_,"atan2",atan2)
-BFLOAT(pow_,"pow",pow)
+BFLOAT(atan2_, "atan2", atan2)
+BFLOAT(pow_, "pow", pow)
 
-PRIVATE void frexp_()
-{   int exp;
-    ONEPARAM("frexp");
-    FLOAT("frexp");
-    UNARY(FLOAT_NEWNODE, frexp(FLOATVAL, &exp));
-    NULLARY(INTEGER_NEWNODE, (long)exp);
-    return; }
+PRIVATE void frexp_(p_EC ec) {
+  int exp;
+  ONEPARAM("frexp");
+  FLOAT("frexp");
+  UNARY(FLOAT_NEWNODE, frexp(FLOATVAL, &exp));
+  NULLARY(INTEGER_NEWNODE, (long)exp);
+  return; 
+}
 
-PRIVATE void modf_()
-{   double exp;
-    ONEPARAM("frexp");
-    FLOAT("frexp");
-    UNARY(FLOAT_NEWNODE, modf(FLOATVAL, &exp));
-    NULLARY(FLOAT_NEWNODE, exp);
-    return; }
+PRIVATE void modf_(p_EC ec) {
+  double exp;
+  ONEPARAM("frexp");
+  FLOAT("frexp");
+  UNARY(FLOAT_NEWNODE, modf(FLOATVAL, &exp));
+  NULLARY(FLOAT_NEWNODE, exp);
+  return; 
+}
 
-PRIVATE void ldexp_()
-{   long exp;
-    TWOPARAMS("ldexp");
-    INTEGER("ldexp");
-    exp = stk->u.num;
-    POP(stk);
-    FLOAT("ldexp");
-    UNARY(FLOAT_NEWNODE, ldexp(FLOATVAL, (int)exp));
-    return; }
+PRIVATE void ldexp_(p_EC ec) {
+  long exp;
+  TWOPARAMS("ldexp");
+  INTEGER("ldexp");
+  exp = ec->stk->u.num;
+  POP(ec->stk);
+  FLOAT("ldexp");
+  UNARY(FLOAT_NEWNODE, ldexp(FLOATVAL, (int)exp));
+  return; 
+}
 
-PRIVATE void trunc_()
-{
-    ONEPARAM("trunc");
-    FLOAT("trunc");
-    UNARY(INTEGER_NEWNODE, (long)FLOATVAL);
+PRIVATE void trunc_(p_EC ec) {
+  ONEPARAM("trunc");
+  FLOAT("trunc");
+  UNARY(INTEGER_NEWNODE, (long)FLOATVAL);
 }
 
 /* - - -   NUMERIC   - - - */
 
-#define PREDSUCC(PROCEDURE,NAME,OPER)				\
-PRIVATE void PROCEDURE()					\
-{   ONEPARAM(NAME);						\
+#define PREDSUCC(PROCEDURE, NAME, OPER)				\
+PRIVATE void PROCEDURE(p_EC ec)	{				\
+    ONEPARAM(NAME);						\
     NUMERICTYPE(NAME);						\
-    if (stk->op == CHAR_)					\
-	UNARY(CHAR_NEWNODE, stk->u.num OPER 1);			\
-    else UNARY(INTEGER_NEWNODE, stk->u.num OPER 1); }
-PREDSUCC(pred_,"pred",-)
-PREDSUCC(succ_,"succ",+)
+    if (ec->stk->op == CHAR_)					\
+	UNARY(CHAR_NEWNODE, ec->stk->u.num OPER 1);			\
+    else UNARY(INTEGER_NEWNODE, ec->stk->u.num OPER 1); }
+PREDSUCC(pred_, "pred", -)
+PREDSUCC(succ_, "succ", +)
 
-#define PLUSMINUS(PROCEDURE,NAME,OPER)				\
-PRIVATE void PROCEDURE()					\
-{   TWOPARAMS(NAME);						\
+#define PLUSMINUS(PROCEDURE, NAME, OPER)				\
+PRIVATE void PROCEDURE(p_EC ec)	{				\
+    TWOPARAMS(NAME);						\
     FLOAT_I(OPER);						\
     INTEGER(NAME);						\
     NUMERIC2(NAME);						\
-    if (stk->next->op == CHAR_)					\
-	BINARY(CHAR_NEWNODE, stk->next->u.num OPER stk->u.num);	\
-    else BINARY(INTEGER_NEWNODE, stk->next->u.num OPER stk->u.num); }
-PLUSMINUS(plus_,"+",+)
-PLUSMINUS(minus_,"-",-)
+    if (ec->stk->next->op == CHAR_)					\
+	BINARY(CHAR_NEWNODE, ec->stk->next->u.num OPER ec->stk->u.num);	\
+    else BINARY(INTEGER_NEWNODE, ec->stk->next->u.num OPER ec->stk->u.num); }
+PLUSMINUS(plus_, "+", +)
+PLUSMINUS(minus_, "-", -)
 
-#define MAXMIN(PROCEDURE,NAME,OPER)				\
-PRIVATE void PROCEDURE()					\
-{   TWOPARAMS(NAME);						\
+#define MAXMIN(PROCEDURE, NAME, OPER)				\
+PRIVATE void PROCEDURE(p_EC ec)	{				\
+    TWOPARAMS(NAME);						\
     if (FLOATABLE2)						\
       { BINARY(FLOAT_NEWNODE,						\
 	    FLOATVAL OPER FLOATVAL2 ?				\
@@ -689,26 +739,26 @@ PRIVATE void PROCEDURE()					\
 	return; } 						\
     SAME2TYPES(NAME);						\
     NUMERICTYPE(NAME);						\
-    if (stk->op == CHAR_)					\
+    if (ec->stk->op == CHAR_)					\
 	BINARY(CHAR_NEWNODE,					\
-	    stk->u.num OPER stk->next->u.num ?			\
-	    stk->next->u.num : stk->u.num);			\
+	    ec->stk->u.num OPER ec->stk->next->u.num ?			\
+	    ec->stk->next->u.num : ec->stk->u.num);			\
     else BINARY(INTEGER_NEWNODE,					\
-	    stk->u.num OPER stk->next->u.num ?			\
-	    stk->next->u.num : stk->u.num); }
-MAXMIN(max_,"max",<)
-MAXMIN(min_,"min",>)
+	    ec->stk->u.num OPER ec->stk->next->u.num ?			\
+	    ec->stk->next->u.num : ec->stk->u.num); }
+MAXMIN(max_, "max", <)
+MAXMIN(min_, "min", >)
 
-#define COMPREL(PROCEDURE,NAME,CONSTRUCTOR,OPR)				\
-PRIVATE void PROCEDURE()					\
-  { long comp = 0;						\
+#define COMPREL(PROCEDURE, NAME, CONSTRUCTOR, OPR)				\
+PRIVATE void PROCEDURE(p_EC ec)	{				\
+    long comp = 0;						\
     TWOPARAMS(NAME);						\
-    switch (stk->op)						\
+    switch (ec->stk->op)						\
       { case BOOLEAN_: case CHAR_: case INTEGER_:		\
 	    if (FLOATABLE2)					\
 		comp = FLOATVAL2 - FLOATVAL OPR 0;		\
 	    else						\
-		comp = stk->next->u.num - stk->u.num OPR 0;	\
+		comp = ec->stk->next->u.num - ec->stk->u.num OPR 0;	\
 	    break;						\
 	case FLOAT_:						\
 	    if (FLOATABLE2)					\
@@ -719,313 +769,344 @@ PRIVATE void PROCEDURE()					\
 	case SET_:						\
 	  { int i = 0;						\
 	    while ( i < SETSIZE &&				\
-		    ( (stk->next->u.set & 1 << i) ==		\
-		      (stk->u.set & 1 << i) )  )		\
+		    ( (ec->stk->next->u.set & 1 << i) ==		\
+		      (ec->stk->u.set & 1 << i) )  )		\
 		++i; 						\
 	    if (i == SETSIZE) i = 0; else ++i;			\
-	    if (!(stk->u.set & 1 << i)) i = -i;			\
+	    if (!(ec->stk->u.set & 1 << i)) i = -i;			\
 	    comp = i OPR 0;					\
 	    break; }						\
 	case LIST_:						\
 	    BADDATA(NAME);					\
 	default:						\
-	    if (stk->next->op == LIST_)				\
+	    if (ec->stk->next->op == LIST_)				\
 	      BADDATA(NAME);					\
-	    comp = strcmp(GETSTRING(stk->next), GETSTRING(stk))	\
+	    comp = strcmp(GETSTRING(ec->stk->next), GETSTRING(ec->stk))	\
 		   OPR 0;					\
 	    break; }						\
-    stk = CONSTRUCTOR(comp, stk->next->next); }
+    ec->stk = CONSTRUCTOR(comp, ec->stk->next->next); }
 
-COMPREL(eql_,"=",BOOLEAN_NEWNODE,==)
-COMPREL(neql_,"!=",BOOLEAN_NEWNODE,!=)
-COMPREL(less_,"<",BOOLEAN_NEWNODE,<)
-COMPREL(leql_,"<=",BOOLEAN_NEWNODE,<=)
-COMPREL(greater_,">",BOOLEAN_NEWNODE,>)
-COMPREL(geql_,">=",BOOLEAN_NEWNODE,>=)
-COMPREL(compare_,"compare",INTEGER_NEWNODE,+)
-
+COMPREL(eql_, "=", BOOLEAN_NEWNODE, ==)
+COMPREL(neql_, "!=", BOOLEAN_NEWNODE, !=)
+COMPREL(less_, "<", BOOLEAN_NEWNODE, <)
+COMPREL(leql_, "<=", BOOLEAN_NEWNODE, <=)
+COMPREL(greater_, ">", BOOLEAN_NEWNODE, >)
+COMPREL(geql_, ">=", BOOLEAN_NEWNODE, >=)
+COMPREL(compare_, "compare", INTEGER_NEWNODE, +)
 
 /* - - -   FILES AND STREAMS   - - - */
 
-PRIVATE void fopen_()
-{   TWOPARAMS("fopen");
-    STRING("fopen");
-    STRING2("fopen");
-    BINARY(FILE_NEWNODE, fopen(stk->next->u.str, stk->u.str));
-    return; }
+PRIVATE void fopen_(p_EC ec) {
+  TWOPARAMS("fopen");
+  STRING("fopen");
+  STRING2("fopen");
+  BINARY(FILE_NEWNODE, fopen(ec->stk->next->u.str, ec->stk->u.str));
+  return; 
+}
 
-PRIVATE void fclose_()
-{   ONEPARAM("fclose");
-    if (stk->op == FILE_ && stk->u.fil == NULL)
-	{ POP(stk);  return; }
-    FILE("fclose");
-    fclose(stk->u.fil);
-    POP(stk);
-    return; }
+PRIVATE void fclose_(p_EC ec) {
+  ONEPARAM("fclose");
+  if (ec->stk->op == FILE_ && ec->stk->u.fil == NULL) { 
+    POP(ec->stk);
+    return; 
+  }
+  FILE("fclose");
+  fclose(ec->stk->u.fil);
+  POP(ec->stk);
+  return; 
+}
 
-PRIVATE void fflush_()
-{   ONEPARAM("fflush");
-    FILE("fflush");
-    fflush(stk->u.fil);
-    return; }
+PRIVATE void fflush_(p_EC ec) {
+  ONEPARAM("fflush");
+  FILE("fflush");
+  fflush(ec->stk->u.fil);
+  return; 
+}
 
-PRIVATE void fremove_()
-{   ONEPARAM("fremove");
-    STRING("fremove");
-    UNARY(BOOLEAN_NEWNODE, (long)!remove(stk->u.str));
-    return; }
+PRIVATE void fremove_(p_EC ec) {
+  ONEPARAM("fremove");
+  STRING("fremove");
+  UNARY(BOOLEAN_NEWNODE, (long)!remove(ec->stk->u.str));
+  return; 
+}
 
-PRIVATE void frename_()
-{   TWOPARAMS("frename");
-    STRING("frename");
-    STRING2("frename");
-    BINARY(BOOLEAN_NEWNODE, (long)!rename(stk->next->u.str, stk->u.str));
-    return; }
+PRIVATE void frename_(p_EC ec) {
+  TWOPARAMS("frename");
+  STRING("frename");
+  STRING2("frename");
+  BINARY(BOOLEAN_NEWNODE, (long)!rename(ec->stk->next->u.str, ec->stk->u.str));
+  return; 
+}
 
 #define FILEGET(PROCEDURE,NAME,CONSTRUCTOR,EXPR)			\
-PRIVATE void PROCEDURE()					\
-{   ONEPARAM(NAME);						\
+PRIVATE void PROCEDURE(p_EC ec)	{				\
+    ONEPARAM(NAME);						\
     FILE(NAME);							\
     NULLARY(CONSTRUCTOR,EXPR);						\
     return; }
-FILEGET(feof_,"feof",BOOLEAN_NEWNODE,(long)feof(stk->u.fil))
-FILEGET(ferror_,"ferror",BOOLEAN_NEWNODE,(long)ferror(stk->u.fil))
-FILEGET(fgetch_,"fgetch",CHAR_NEWNODE,(long)getc(stk->u.fil))
-FILEGET(ftell_,"ftell",INTEGER_NEWNODE,ftell(stk->u.fil))
+FILEGET(feof_,"feof",BOOLEAN_NEWNODE,(long)feof(ec->stk->u.fil))
+FILEGET(ferror_,"ferror",BOOLEAN_NEWNODE,(long)ferror(ec->stk->u.fil))
+FILEGET(fgetch_,"fgetch",CHAR_NEWNODE,(long)getc(ec->stk->u.fil))
+FILEGET(ftell_,"ftell",INTEGER_NEWNODE,ftell(ec->stk->u.fil))
 
-PRIVATE void fgets_()
-{   int length = 0;
-    int size = INPLINEMAX;
-    char *buff = NULL;
-    ONEPARAM("fgets");
-    FILE("fgets");
-    for (;;)
-      { buff = realloc(buff, size);
-	if (fgets(buff + length, size - length, stk->u.fil) == NULL)
-	    { buff[length] = 0; break; }
-	if (strchr(buff, '\n')) break;
-	length += strlen(buff);
-	size = size * 2; }
-    NULLARY(STRING_NEWNODE, buff);
-    return; }
+PRIVATE void fgets_(p_EC ec) {
+  int length = 0;
+  int size = INPLINEMAX;
+  char *buff = NULL;
+  ONEPARAM("fgets");
+  FILE("fgets");
+  for (;;) { 
+    buff = realloc(buff, size);
+    if (fgets(buff + length, size - length, ec->stk->u.fil) == NULL) {
+      buff[length] = 0;
+      break;
+    }
+    if (strchr(buff, '\n')) break;
+    length += strlen(buff);
+    size = size * 2; }
+  NULLARY(STRING_NEWNODE, buff);
+  return;
+}
 
-PRIVATE void fput_()
-{   FILE *stm;
-    TWOPARAMS("fput");
-    if (stk->next->op != FILE_ || (stm = stk->next->u.fil) == NULL)
-	execerror("file", "fput");
-    writefactor(stk, stm);
-    fprintf(stm, " ");
-    POP(stk);
-    return; }
+PRIVATE void fput_(p_EC ec) {
+  FILE *stm;
+  TWOPARAMS("fput");
+  if (ec->stk->next->op != FILE_ || (stm = ec->stk->next->u.fil) == NULL)
+    execerror(ec, "file", "fput");
+  writefactor(ec, ec->stk, stm);
+  fprintf(stm, " ");
+  POP(ec->stk);
+  return; 
+}
 
-PRIVATE void fputch_()
-{   int ch;
-    TWOPARAMS("fputch");
-    INTEGER("fputch");
-    ch = stk->u.num;
-    POP(stk);
-    FILE("fputch");
-    putc(ch, stk->u.fil);
-    return; }
+PRIVATE void fputch_(p_EC ec) { 
+  int ch;
+  TWOPARAMS("fputch");
+  INTEGER("fputch");
+  ch = ec->stk->u.num;
+  POP(ec->stk);
+  FILE("fputch");
+  putc(ch, ec->stk->u.fil);
+  return; 
+}
 
-PRIVATE void fputchars_() /* suggested by Heiko Kuhrt, as "fputstring_" */
-{   FILE *stm;
-    TWOPARAMS("fputchars");
-    if (stk->next->op != FILE_ || (stm = stk->next->u.fil) == NULL)
-        execerror("file", "fputchars");
-    fprintf(stm,stk->u.str);
-    POP(stk);
-    return; }
+PRIVATE void fputchars_(p_EC ec) { /* suggested by Heiko Kuhrt, as "fputstring_" */
+  FILE *stm;
+  TWOPARAMS("fputchars");
+  if (ec->stk->next->op != FILE_ || (stm = ec->stk->next->u.fil) == NULL)
+    execerror(ec, "file", "fputchars");
+  /* fprintf(stm, ec->stk->u.str); */
+  fputs(ec->stk->u.str, stm);
+  POP(ec->stk);
+  return; 
+}
 
-PRIVATE void fread_()
-{   unsigned char *buf;
-    long count;
-    TWOPARAMS("fread");
-    INTEGER("fread");
-    count = stk->u.num;
-    POP(stk);
-    FILE("fread");
-    buf = malloc(count);
-    dump1 = LIST_NEWNODE(NULL, dump1);
-    for (count = fread(buf, (size_t)1, (size_t)count, stk->u.fil) - 1;
-	     count >= 0; count--)
-	DMP1 = INTEGER_NEWNODE((long)buf[count], DMP1);
-    free(buf);
-    UNARY(LIST_NEWNODE, DMP1);
-    POP(dump1);
-    return; }
+PRIVATE void fread_(p_EC ec) {
+  unsigned char *buf;
+  long count;
+  TWOPARAMS("fread");
+  INTEGER("fread");
+  count = ec->stk->u.num;
+  POP(ec->stk);
+  FILE("fread");
+  buf = malloc(count);
+  ec->dump1 = LIST_NEWNODE(NULL, ec->dump1);
+  for (count = fread(buf, (size_t)1, (size_t)count, ec->stk->u.fil) - 1; count >= 0; count--)
+    DMP1 = INTEGER_NEWNODE((long)buf[count], DMP1);
+  free(buf);
+  UNARY(LIST_NEWNODE, DMP1);
+  POP(ec->dump1);
+  return; 
+}
 
-PRIVATE void fwrite_()
-{   int length;
-    int i;
-    unsigned char *buff;
-    Node *n;
-    TWOPARAMS("fwrite");
-    LIST("fwrite");
-    for (n = stk->u.lis, length = 0; n; n = n->next, length++)
-	if (n->op != INTEGER_) execerror("numeric list", "fwrite");
-    buff = malloc(length);
-    for (n = stk->u.lis, i = 0; n; n = n->next, i++)
-	buff[i] = n->u.num;
-    POP(stk);
-    FILE("fwrite");
-    fwrite(buff, (size_t)length, (size_t)1, stk->u.fil);
-    return; }
+PRIVATE void fwrite_(p_EC ec) { 
+  int length;
+  int i;
+  unsigned char *buff;
+  Node *n;
+  TWOPARAMS("fwrite");
+  LIST("fwrite");
+  for (n = ec->stk->u.lis, length = 0; n; n = n->next, length++)
+    if (n->op != INTEGER_) execerror(ec, "numeric list", "fwrite");
+  buff = malloc(length);
+  for (n = ec->stk->u.lis, i = 0; n; n = n->next, i++)
+    buff[i] = n->u.num;
+  POP(ec->stk);
+  FILE("fwrite");
+  fwrite(buff, (size_t)length, (size_t)1, ec->stk->u.fil);
+  return; 
+}
 
-PRIVATE void fseek_()
-{   long pos;
-    int whence;
-    THREEPARAMS("fseek");
-    INTEGER("fseek");
-    INTEGER2("fseek");
-    whence = stk->u.num;
-    POP(stk);
-    pos = stk->u.num;
-    POP(stk);
-    FILE("fseek");
-    NULLARY(BOOLEAN_NEWNODE, (long)!!fseek(stk->u.fil, pos, whence));
-    return; }
+PRIVATE void fseek_(p_EC ec) {
+  long pos;
+  int whence;
+  THREEPARAMS("fseek");
+  INTEGER("fseek");
+  INTEGER2("fseek");
+  whence = ec->stk->u.num;
+  POP(ec->stk);
+  pos = ec->stk->u.num;
+  POP(ec->stk);
+  FILE("fseek");
+  NULLARY(BOOLEAN_NEWNODE, (long)!!fseek(ec->stk->u.fil, pos, whence));
+  return; 
+}
 
 
 /* - - -   AGGREGATES   - - - */
 
-PRIVATE void first_()
-{
-    ONEPARAM("first");
-    switch (stk->op)
-      { case LIST_:
-	    CHECKEMPTYLIST(stk->u.lis,"first");
-	    GUNARY(stk->u.lis->op,stk->u.lis->u);
-	    return;
-	case STRING_:
-	    CHECKEMPTYSTRING(stk->u.str,"first");
-	    UNARY(CHAR_NEWNODE,(long)*(stk->u.str));
-	    return;
-	case SET_:
-	  { long i = 0;
-	    CHECKEMPTYSET(stk->u.set,"first");
-	    while (!(stk->u.set & (1 << i))) i++;
-	    UNARY(INTEGER_NEWNODE,i);
-	    return; }
-	default:
-	    BADAGGREGATE("first"); }
+PRIVATE void first_(p_EC ec) {
+  ONEPARAM("first");
+  switch (ec->stk->op) {
+    case LIST_:
+      CHECKEMPTYLIST(ec->stk->u.lis,"first");
+      GUNARY(ec->stk->u.lis->op,ec->stk->u.lis->u);
+      return;
+    case STRING_:
+      CHECKEMPTYSTRING(ec->stk->u.str,"first");
+      UNARY(CHAR_NEWNODE,(long)*(ec->stk->u.str));
+      return;
+    case SET_: 
+      { 
+        long i = 0;
+        CHECKEMPTYSET(ec->stk->u.set,"first");
+        while (!(ec->stk->u.set & (1 << i))) i++;
+        UNARY(INTEGER_NEWNODE,i);
+        return; 
+      }
+    default:
+      BADAGGREGATE("first"); 
+  }
 }
-PRIVATE void rest_()
-{
-    ONEPARAM("rest");
-    switch (stk->op)
-      { case SET_:
-	  { int i = 0;
-	    CHECKEMPTYSET(stk->u.set,"rest");
-	    while (!(stk->u.set & (1 << i))) i++;
-	    UNARY(SET_NEWNODE,stk->u.set & ~(1 << i));
-	    break; }
-	case STRING_:
-	  { char *s = stk->u.str;
-	    CHECKEMPTYSTRING(s,"rest");
-	    UNARY(STRING_NEWNODE, ++s);
-	    break; }
-	case LIST_:
-	    CHECKEMPTYLIST(stk->u.lis,"rest");
-	    UNARY(LIST_NEWNODE,stk->u.lis->next);
-	    return;
-	default:
-	    BADAGGREGATE("rest"); }
-}
-PRIVATE void uncons_()
-{
-    ONEPARAM("uncons");
-    switch (stk->op)
-      { case SET_:
-	  { long i = 0; long set = stk->u.set;
-	    CHECKEMPTYSET(set,"uncons");
-	    while (!(set & (1 << i))) i++;
-	    UNARY(INTEGER_NEWNODE,i);
-	    NULLARY(SET_NEWNODE,set & ~(1 << i));
-	    break; }
-	case STRING_:
-	  { char *s = stk->u.str;
-	    CHECKEMPTYSTRING(s,"uncons");
-	    UNARY(CHAR_NEWNODE,(long)*s);
-	    NULLARY(STRING_NEWNODE,++s);
-	    break; }
-	case LIST_:
-	    SAVESTACK;
-	    CHECKEMPTYLIST(SAVED1->u.lis,"uncons");
-	    GUNARY(SAVED1->u.lis->op,SAVED1->u.lis->u);
-	    NULLARY(LIST_NEWNODE,SAVED1->u.lis->next);
-	    POP(dump);
-	    return;
-	default:
-	    BADAGGREGATE("uncons"); }
-}
-PRIVATE void unswons_()
-{
-    ONEPARAM("unswons");
-    switch (stk->op)
-      { case SET_:
-	  { long i = 0; long set = stk->u.set;
-	    CHECKEMPTYSET(set,"unswons");
-	    while (!(set & (1 << i))) i++;
-	    UNARY(SET_NEWNODE,set & ~(1 << i));
-	    NULLARY(INTEGER_NEWNODE,i);
-	    break; }
-	case STRING_:
-	  { char *s = stk->u.str;
-	    CHECKEMPTYSTRING(s,"unswons");
-	    UNARY(STRING_NEWNODE,++s);
-	    NULLARY(CHAR_NEWNODE,(long)*(--s));
-	    break; }
-	case LIST_:
-	    SAVESTACK;
-	    CHECKEMPTYLIST(SAVED1->u.lis,"unswons");
-	    UNARY(LIST_NEWNODE,SAVED1->u.lis->next);
-	    GNULLARY(SAVED1->u.lis->op,SAVED1->u.lis->u);
-	    POP(dump);
-	    return;
-	default:
-	    BADAGGREGATE("unswons"); }
-}
-PRIVATE long equal_aux(); /* forward */
 
-PRIVATE int equal_list_aux(n1,n2)
-Node *n1, *n2;
-{
-    if (n1 == NULL && n2 == NULL) return 1;
-    if (n1 == NULL || n2 == NULL) return 0;
-    if (equal_aux(n1,n2))
-	return equal_list_aux(n1->next,n2->next);
-    else return 0;
+PRIVATE void rest_(p_EC ec) {
+  ONEPARAM("rest");
+  switch (ec->stk->op) {
+    case SET_:
+      { 
+        int i = 0;
+        CHECKEMPTYSET(ec->stk->u.set,"rest");
+        while (!(ec->stk->u.set & (1 << i))) i++;
+        UNARY(SET_NEWNODE,ec->stk->u.set & ~(1 << i));
+        break; 
+      }
+    case STRING_:
+      {
+        char *s = ec->stk->u.str;
+        CHECKEMPTYSTRING(s,"rest");
+        UNARY(STRING_NEWNODE, ++s);
+        break; 
+      }
+    case LIST_:
+      CHECKEMPTYLIST(ec->stk->u.lis,"rest");
+      UNARY(LIST_NEWNODE,ec->stk->u.lis->next);
+      return;
+    default:
+      BADAGGREGATE("rest"); 
+  }
 }
-PRIVATE long equal_aux(n1,n2)
-Node *n1, *n2;
-{
-    if (n1 == NULL && n2 == NULL) return 1;
-    if (n1 == NULL || n2 == NULL) return 0;
-    switch (n1->op)
-      { case BOOLEAN_: case CHAR_: case INTEGER_:
-	    if (n2->op != BOOLEAN_ && n2->op != CHAR_ &&
-		n2->op != INTEGER_)
-		return 0;
-	    return n1->u.num == n2->u.num;
-	case SET_ :
-	    if (n2->op != SET_) return 0;
-	    return n1->u.num == n2->u.num;
-	case LIST_ :
-	    if (n2->op != LIST_) return 0;
-	    return equal_list_aux(n1->u.lis,n2->u.lis);
-	default:
-	    return strcmp(GETSTRING(n1),GETSTRING(n2)) == 0; }
+
+PRIVATE void uncons_(p_EC ec) {
+  ONEPARAM("uncons");
+  switch (ec->stk->op) {
+    case SET_:
+      {
+        long i = 0; long set = ec->stk->u.set;
+        CHECKEMPTYSET(set,"uncons");
+        while (!(set & (1 << i))) i++;
+        UNARY(INTEGER_NEWNODE,i);
+        NULLARY(SET_NEWNODE,set & ~(1 << i));
+        break; 
+      }
+    case STRING_:
+      {
+        char *s = ec->stk->u.str;
+        CHECKEMPTYSTRING(s,"uncons");
+        UNARY(CHAR_NEWNODE,(long)*s);
+        NULLARY(STRING_NEWNODE,++s);
+        break; 
+      }
+    case LIST_:
+      SAVESTACK;
+      CHECKEMPTYLIST(SAVED1->u.lis,"uncons");
+      GUNARY(SAVED1->u.lis->op,SAVED1->u.lis->u);
+      NULLARY(LIST_NEWNODE,SAVED1->u.lis->next);
+      POP(ec->dump);
+      return;
+    default:
+      BADAGGREGATE("uncons"); 
+  }
 }
-PRIVATE void equal_()
-{
-    TWOPARAMS("equal");
-    BINARY(BOOLEAN_NEWNODE,equal_aux(stk,stk->next));
+
+PRIVATE void unswons_(p_EC ec) {
+  ONEPARAM("unswons");
+  switch (ec->stk->op)
+  { 
+    case SET_:
+      {
+        long i = 0; long set = ec->stk->u.set;
+        CHECKEMPTYSET(set,"unswons");
+        while (!(set & (1 << i))) i++;
+        UNARY(SET_NEWNODE,set & ~(1 << i));
+        NULLARY(INTEGER_NEWNODE,i);
+        break; 
+      }
+    case STRING_:
+      {
+        char *s = ec->stk->u.str;
+        CHECKEMPTYSTRING(s,"unswons");
+        UNARY(STRING_NEWNODE,++s);
+        NULLARY(CHAR_NEWNODE,(long)*(--s));
+        break; 
+      }
+    case LIST_:
+      SAVESTACK;
+      CHECKEMPTYLIST(SAVED1->u.lis,"unswons");
+      UNARY(LIST_NEWNODE,SAVED1->u.lis->next);
+      GNULLARY(SAVED1->u.lis->op,SAVED1->u.lis->u);
+      POP(ec->dump);
+      return;
+    default:
+      BADAGGREGATE("unswons"); 
+  }
+}
+
+PRIVATE long equal_aux(p_EC ec, p_Node n1, p_Node n2); /* forward */
+
+PRIVATE int equal_list_aux(p_EC ec, p_Node n1, p_Node n2) {
+  if (n1 == NULL && n2 == NULL) return 1;
+  if (n1 == NULL || n2 == NULL) return 0;
+  if (equal_aux(ec, n1, n2))
+    return equal_list_aux(ec, n1->next, n2->next);
+  else return 0;
+}
+
+PRIVATE long equal_aux(p_EC ec, p_Node n1, p_Node n2) {
+  if (n1 == NULL && n2 == NULL) return 1;
+  if (n1 == NULL || n2 == NULL) return 0;
+  switch (n1->op) {
+    case BOOLEAN_: case CHAR_: case INTEGER_:
+      if (n2->op != BOOLEAN_ && n2->op != CHAR_ && n2->op != INTEGER_)
+        return 0;
+      return n1->u.num == n2->u.num;
+    case SET_ :
+      if (n2->op != SET_) return 0;
+      return n1->u.num == n2->u.num;
+    case LIST_ :
+      if (n2->op != LIST_) return 0;
+      return equal_list_aux(ec, n1->u.lis, n2->u.lis);
+    default:
+      return strcmp(GETSTRING(n1),GETSTRING(n2)) == 0; 
+  }
+}
+
+PRIVATE void equal_(p_EC ec) {
+  TWOPARAMS("equal");
+  BINARY(BOOLEAN_NEWNODE,equal_aux(ec, ec->stk, ec->stk->next));
 }
 #define INHAS(PROCEDURE,NAME,AGGR,ELEM)				\
-PRIVATE void PROCEDURE()					\
-{   int found = 0;						\
+PRIVATE void PROCEDURE(p_EC ec)	{				\
+    int found = 0;						\
     TWOPARAMS(NAME);						\
     switch (AGGR->op)						\
       { case SET_:						\
@@ -1048,14 +1129,14 @@ PRIVATE void PROCEDURE()					\
 	    BADAGGREGATE(NAME); }				\
     BINARY(BOOLEAN_NEWNODE,(long)found);					\
 }
-INHAS(in_,"in",stk,stk->next)
-INHAS(has_,"has",stk->next,stk)
+INHAS(in_,"in",ec->stk,ec->stk->next)
+INHAS(has_,"has",ec->stk->next,ec->stk)
 
 #define OF_AT(PROCEDURE,NAME,AGGR,INDEX)			\
-PRIVATE void PROCEDURE()					\
-{   TWOPARAMS(NAME);						\
+PRIVATE void PROCEDURE(p_EC ec)	{				\
+    TWOPARAMS(NAME);						\
     if (INDEX->op != INTEGER_ || INDEX->u.num < 0)		\
-	execerror("non-negative integer", NAME);		\
+	execerror(ec, "non-negative integer", NAME);		\
     switch (AGGR->op)						\
       { case SET_:						\
 	  { long i; int indx = INDEX->u.num;			\
@@ -1084,60 +1165,59 @@ PRIVATE void PROCEDURE()					\
 	default:						\
 	    BADAGGREGATE(NAME); }				\
 }
-OF_AT(of_,"of",stk,stk->next)
-OF_AT(at_,"at",stk->next,stk)
+OF_AT(of_,"of",ec->stk,ec->stk->next)
+OF_AT(at_,"at",ec->stk->next,ec->stk)
 
-PRIVATE void choice_()
-{
-    THREEPARAMS("choice");
-    if (stk->next->next->u.num)
-	 stk = newnode(stk->next->op,stk->next->u,
-		       stk->next->next->next);
-    else stk = newnode(stk->op,stk->u,
-		       stk->next->next->next);
+PRIVATE void choice_(p_EC ec) {
+  THREEPARAMS("choice");
+  if (ec->stk->next->next->u.num) 
+    ec->stk = newnode(ec, ec->stk->next->op, ec->stk->next->u, ec->stk->next->next->next);
+  else
+    ec->stk = newnode(ec, ec->stk->op, ec->stk->u, ec->stk->next->next->next);
 }
-PRIVATE void case_()
-{
-    Node *n;
-    TWOPARAMS("case");
-    LIST("case");
-    n = stk->u.lis;
-    CHECKEMPTYLIST(n,"case");
-    while ( n->next != NULL &&
-	    n->u.lis->u.num != stk->next->u.num )
-	n = n->next;
-/*
-    printf("case : now execute : ");
-    writefactor(n->u.lis, stdout); printf("\n");
-    stk = stk->next->next;
-    exeterm(n->next != NULL ? n->u.lis->next : n->u.lis);
-*/
-    if (n->next != NULL)
-	{stk = stk->next->next; exeterm(n->u.lis->next);}
-    else
-	{stk = stk->next;       exeterm(n->u.lis);}
+
+PRIVATE void case_(p_EC ec) {
+  Node *n;
+  TWOPARAMS("case");
+  LIST("case");
+  n = ec->stk->u.lis;
+  CHECKEMPTYLIST(n,"case");
+  while ( n->next != NULL && n->u.lis->u.num != ec->stk->next->u.num )
+    n = n->next;
+  /*
+     printf("case : now execute : ");
+     writefactor(n->u.lis, stdout); printf("\n");
+     ec->stk = ec->stk->next->next;
+     exeterm(ec, n->next != NULL ? n->u.lis->next : n->u.lis);
+     */
+  if (n->next != NULL) {
+    ec->stk = ec->stk->next->next;
+    exeterm(ec, n->u.lis->next);
+  }
+  else {
+    ec->stk = ec->stk->next;
+    exeterm(ec, n->u.lis);
+  }
 }
-PRIVATE void opcase_()
-{
-    Node *n;
-    ONEPARAM("opcase");
-    LIST("opcase");
-    n = stk->u.lis;
-    CHECKEMPTYLIST(n,"opcase");
-    while ( n->next != NULL &&
-	    n->op == LIST_ &&
-	    n->u.lis->op != stk->next->op )
-	n = n->next;
-    CHECKLIST(n->op,"opcase");
-    UNARY(LIST_NEWNODE,
-	n->next != NULL ? n->u.lis->next : n->u.lis);
+
+PRIVATE void opcase_(p_EC ec) {
+  Node *n;
+  ONEPARAM("opcase");
+  LIST("opcase");
+  n = ec->stk->u.lis;
+  CHECKEMPTYLIST(n,"opcase");
+  while ( n->next != NULL && n->op == LIST_ && n->u.lis->op != ec->stk->next->op )
+    n = n->next;
+  CHECKLIST(n->op,"opcase");
+  UNARY(LIST_NEWNODE, n->next != NULL ? n->u.lis->next : n->u.lis);
 }
+
 #define CONS_SWONS(PROCEDURE,NAME,AGGR,ELEM)			\
-PRIVATE void PROCEDURE()					\
-{   TWOPARAMS(NAME);						\
+PRIVATE void PROCEDURE(p_EC ec)	{				\
+    TWOPARAMS(NAME);						\
     switch (AGGR->op)						\
       { case LIST_:						\
-	    BINARY(LIST_NEWNODE,newnode(ELEM->op,			\
+	    BINARY(LIST_NEWNODE,newnode(ec, ELEM->op,			\
 				 ELEM->u,AGGR->u.lis));	\
 	    break;						\
 	case SET_:						\
@@ -1147,7 +1227,7 @@ PRIVATE void PROCEDURE()					\
 	case STRING_:						\
 	  { char *s;						\
 	    if (ELEM->op != CHAR_)				\
-		execerror("character", NAME);			\
+		execerror(ec, "character", NAME);			\
 	    s = (char *) malloc(strlen(AGGR->u.str) + 2);	\
 	    s[0] = ELEM->u.num;					\
 	    strcpy(s + 1,AGGR->u.str);				\
@@ -1156,213 +1236,266 @@ PRIVATE void PROCEDURE()					\
 	default:						\
 	    BADAGGREGATE(NAME); }				\
 }
-CONS_SWONS(cons_,"cons",stk,stk->next)
-CONS_SWONS(swons_,"swons",stk->next,stk)
+CONS_SWONS(cons_, "cons", ec->stk, ec->stk->next)
+CONS_SWONS(swons_, "swons", ec->stk->next, ec->stk)
 
-PRIVATE void drop_()
-{   int n = stk->u.num;
-    TWOPARAMS("drop");
-    switch (stk->next->op)
-      { case SET_:
-	  { int i; long result = 0;
-	    for (i = 0; i < SETSIZE; i++)
-	        if (stk->next->u.set & (1 << i))
-		  { if (n < 1) result = result | (1 << i);
-		    else n--; }
-	    BINARY(SET_NEWNODE,result);
-	    return; }
-	case STRING_:
-	  { char *result = stk->next->u.str;
-	    while (n-- > 0  &&  *result != '\0') ++result;
-	    BINARY(STRING_NEWNODE,result);
-	    return; }
-	case LIST_:
-	  { Node *result = stk->next->u.lis;
-	    while (n-- > 0 && result != NULL) result = result->next;
-	    BINARY(LIST_NEWNODE,result);
-	    return; }
-	default:
-	    BADAGGREGATE("drop"); }
+PRIVATE void drop_(p_EC ec) {
+  int n = ec->stk->u.num;
+  TWOPARAMS("drop");
+  switch (ec->stk->next->op) {
+    case SET_:
+      {
+        int i; long result = 0;
+        for (i = 0; i < SETSIZE; i++)
+          if (ec->stk->next->u.set & (1 << i)) { 
+            if (n < 1)
+              result = result | (1 << i);
+            else
+              n--; 
+          }
+        BINARY(SET_NEWNODE,result);
+        return; 
+      }
+    case STRING_:
+      {
+        char *result = ec->stk->next->u.str;
+        while (n-- > 0  &&  *result != '\0')
+          ++result;
+        BINARY(STRING_NEWNODE,result);
+        return; 
+      }
+    case LIST_:
+      {
+        Node *result = ec->stk->next->u.lis;
+        while (n-- > 0 && result != NULL)
+          result = result->next;
+        BINARY(LIST_NEWNODE,result);
+        return; 
+      }
+    default:
+      BADAGGREGATE("drop"); 
+  }
 }
 
-PRIVATE void take_()
-{   int n = stk->u.num;
-    TWOPARAMS("take");
-    switch (stk->next->op)
-      { case SET_:
-	  { int i; long result = 0;
-	    for (i = 0; i < SETSIZE; i++)
-	        if (stk->next->u.set & (1 << i))
-		  { if (n > 0)
-		      { --n;  result = result | (1 << i); }
-		    else break; }
-	    BINARY(SET_NEWNODE,result);
-	    return; }
-	case STRING_:
-	  { int i; char *old, *p, *result;
-	    i = stk->u.num;
-	    old = stk->next->u.str;
-	    POP(stk);
-	    /* do not swap the order of the next two statements ! ! ! */
-	    if (i < 0) i = 0;
-	    if (i > strlen(old))  return; /* the old string unchanged */
-	    p = result = (char *) malloc(strlen(old) - i + 1);
-	    while (i-- > 0)  *p++ = *old++;
-	    UNARY(STRING_NEWNODE,result);
-	    return; }
-	case LIST_:
-	  { int i = stk->u.num;
-	    if (i < 1) { BINARY(LIST_NEWNODE,NULL); return; }	/* null string */
-	    dump1 = newnode(LIST_,stk->next->u,dump1);/* old  */
-	    dump2 = LIST_NEWNODE(0L, dump2);		  /* head */
-	    dump3 = LIST_NEWNODE(0L, dump3);		  /* last */
-	    while (DMP1 != NULL && i-- > 0)
-	      { if (DMP2 == NULL)			/* first */
-		  { DMP2 = newnode(DMP1->op,DMP1->u,NULL);
-		    DMP3 = DMP2; }
-		else					/* further */
-		  { DMP3->next = newnode(DMP1->op,DMP1->u,NULL);
-		    DMP3 = DMP3->next; }
-		DMP1 = DMP1->next; }
-	    DMP3->next = NULL;
-	    BINARY(LIST_NEWNODE,DMP2);
-	    POP(dump1); POP(dump2); POP(dump3);
-	    return; }
-	default:
-	    BADAGGREGATE("take"); }
+PRIVATE void take_(p_EC ec) {
+  int n = ec->stk->u.num;
+  TWOPARAMS("take");
+  switch (ec->stk->next->op) {
+    case SET_:
+      {
+        int i; long result = 0;
+        for (i = 0; i < SETSIZE; i++)
+          if (ec->stk->next->u.set & (1 << i)) {
+            if (n > 0) {
+              --n;
+              result = result | (1 << i); 
+            }
+            else 
+              break; 
+          }
+        BINARY(SET_NEWNODE,result);
+        return; 
+      }
+    case STRING_:
+      {
+        int i; char *old, *p, *result;
+        i = ec->stk->u.num;
+        old = ec->stk->next->u.str;
+        POP(ec->stk);
+        /* do not swap the order of the next two statements ! ! ! */
+        if (i < 0)
+          i = 0;
+        if (i > strlen(old))
+          return; /* the old string unchanged */
+        p = result = (char *) malloc(strlen(old) - i + 1);
+        while (i-- > 0)
+          *p++ = *old++;
+        UNARY(STRING_NEWNODE,result);
+        return; 
+      }
+    case LIST_:
+      {
+        int i = ec->stk->u.num;
+        if (i < 1) {	/* null string */
+          BINARY(LIST_NEWNODE,NULL); return; 
+        }
+        ec->dump1 = newnode(ec, LIST_,ec->stk->next->u, ec->dump1);/* old  */
+        ec->dump2 = LIST_NEWNODE(0L, ec->dump2);		  /* head */
+        ec->dump3 = LIST_NEWNODE(0L, ec->dump3);		  /* last */
+        while (DMP1 != NULL && i-- > 0) {
+          if (DMP2 == NULL) {				/* first */
+            DMP2 = newnode(ec, DMP1->op,DMP1->u,NULL);
+            DMP3 = DMP2; 
+          }
+          else {					/* further */
+            DMP3->next = newnode(ec, DMP1->op,DMP1->u,NULL);
+            DMP3 = DMP3->next; 
+          }
+          DMP1 = DMP1->next; 
+        }
+        DMP3->next = NULL;
+        BINARY(LIST_NEWNODE,DMP2);
+        POP(ec->dump1); 
+        POP(ec->dump2); 
+        POP(ec->dump3);
+        return; 
+      }
+    default:
+      BADAGGREGATE("take"); 
+  }
 }
-PRIVATE void concat_()
-{
-    TWOPARAMS("concat");
-    SAME2TYPES("concat");
-    switch (stk->op)
-      { case SET_:
-	    BINARY(SET_NEWNODE,stk->next->u.set | stk->u.set);
-	    return;
-	case STRING_:
-	  { char *s, *p;
-	    s = p = (char *)malloc(strlen(stk->next->u.str) +
-				   strlen(stk->u.str) + 1);
-	    while ((*p++ = *(stk->next->u.str)++) != '\0');
-	    --p; /* don't want terminating null */
-	    while ((*p++ = *(stk->u.str)++) != '\0');
-	    BINARY(STRING_NEWNODE,s);
-	    return; }
-	case LIST_:
-	    if (stk->next->u.lis == NULL)
-	      { BINARY(LIST_NEWNODE,stk->u.lis); return; }
-	    dump1 = LIST_NEWNODE(stk->next->u.lis,dump1);/* old  */
-	    dump2 = LIST_NEWNODE(0L,dump2);		 /* head */
-	    dump3 = LIST_NEWNODE(0L,dump3);		 /* last */
-	    while (DMP1 != NULL)
-	      { if (DMP2 == NULL)			/* first */
-		  { DMP2 =
-			newnode(DMP1->op,
-			    DMP1->u,NULL);
-		    DMP3 = DMP2; }
-		else					/* further */
-		  { DMP3->next =
-			newnode(DMP1->op,
-			    DMP1->u,NULL);
-		    DMP3 = DMP3->next; };
-		DMP1 = DMP1->next; }
-	    DMP3->next = stk->u.lis;
-	    BINARY(LIST_NEWNODE,DMP2);
-	    POP(dump1);
-	    POP(dump2);
-	    POP(dump3);
-	    return;
-	default:
-	    BADAGGREGATE("concat"); };
+
+PRIVATE void concat_(p_EC ec) {
+  TWOPARAMS("concat");
+  SAME2TYPES("concat");
+  switch (ec->stk->op) {
+    case SET_:
+      BINARY(SET_NEWNODE,ec->stk->next->u.set | ec->stk->u.set);
+      return;
+    case STRING_:
+      {
+        char *s, *p;
+        s = p = (char *)malloc(strlen(ec->stk->next->u.str) +
+            strlen(ec->stk->u.str) + 1);
+        while ((*p++ = *(ec->stk->next->u.str)++) != '\0')
+          ;
+        --p; /* don't want terminating null */
+        while ((*p++ = *(ec->stk->u.str)++) != '\0')
+          ;
+        BINARY(STRING_NEWNODE,s);
+        return; 
+      }
+    case LIST_:
+      if (ec->stk->next->u.lis == NULL) {
+        BINARY(LIST_NEWNODE,ec->stk->u.lis); return; 
+      }
+      ec->dump1 = LIST_NEWNODE(ec->stk->next->u.lis,ec->dump1);/* old  */
+      ec->dump2 = LIST_NEWNODE(0L,ec->dump2);		 /* head */
+      ec->dump3 = LIST_NEWNODE(0L,ec->dump3);		 /* last */
+      while (DMP1 != NULL) {
+        if (DMP2 == NULL) {			/* first */
+          DMP2 =
+            newnode(ec, DMP1->op, DMP1->u,NULL);
+          DMP3 = DMP2; 
+        }
+        else {					/* further */
+          DMP3->next = newnode(ec, DMP1->op, DMP1->u,NULL);
+          DMP3 = DMP3->next; 
+        }
+        DMP1 = DMP1->next; 
+      }
+      DMP3->next = ec->stk->u.lis;
+      BINARY(LIST_NEWNODE, DMP2);
+      POP(ec->dump1);
+      POP(ec->dump2);
+      POP(ec->dump3);
+      return;
+    default:
+      BADAGGREGATE("concat"); 
+  }
 }
-PRIVATE void enconcat_()
-{
-    THREEPARAMS("enconcat");
-    SAME2TYPES("enconcat");
-    swapd_(); cons_(); concat_();
+
+PRIVATE void enconcat_(p_EC ec) {
+  THREEPARAMS("enconcat");
+  SAME2TYPES("enconcat");
+  swapd_(ec); cons_(ec); concat_(ec);
 }
-PRIVATE void null_()
-{
-    ONEPARAM("null");
-    switch (stk->op)
-      { case STRING_:
-	    UNARY(BOOLEAN_NEWNODE, (long)(*(stk->u.str) == '\0'));
-	    break;
-	case FLOAT_:
-	    UNARY(BOOLEAN_NEWNODE, (long)(stk->u.dbl == 0.0));
-	    break;
-	case FILE_:
-	    UNARY(BOOLEAN_NEWNODE, (long)(stk->u.fil == NULL));
-	    break;
-	default:
-	    UNARY(BOOLEAN_NEWNODE, (long)(! stk->u.num)); }
+
+PRIVATE void null_(p_EC ec) {
+  ONEPARAM("null");
+  switch (ec->stk->op) {
+    case STRING_:
+      UNARY(BOOLEAN_NEWNODE, (long)(*(ec->stk->u.str) == '\0'));
+      break;
+    case FLOAT_:
+      UNARY(BOOLEAN_NEWNODE, (long)(ec->stk->u.dbl == 0.0));
+      break;
+    case FILE_:
+      UNARY(BOOLEAN_NEWNODE, (long)(ec->stk->u.fil == NULL));
+      break;
+    default:
+      UNARY(BOOLEAN_NEWNODE, (long)(! ec->stk->u.num)); 
+  }
 }
-PRIVATE void not_()
-{
-    ONEPARAM("not");
-    switch (stk->op)
-      { case SET_:
-	    UNARY(SET_NEWNODE,~ stk->u.set);
-	    break;
-	case STRING_:
-	    UNARY(BOOLEAN_NEWNODE,(long)(*(stk->u.str) != '\0'));
-	    break;
-	case BOOLEAN_: case CHAR_: case INTEGER_: case LIST_:
-	    UNARY(BOOLEAN_NEWNODE, (long)(! stk->u.num));
-	    break;
-	default:
-	    BADDATA("not"); }
+
+PRIVATE void not_(p_EC ec) {
+  ONEPARAM("not");
+  switch (ec->stk->op) {
+    case SET_:
+      UNARY(SET_NEWNODE, ~ ec->stk->u.set);
+      break;
+    case STRING_:
+      UNARY(BOOLEAN_NEWNODE, (long)(*(ec->stk->u.str) != '\0'));
+      break;
+    case BOOLEAN_: case CHAR_: case INTEGER_: case LIST_:
+      UNARY(BOOLEAN_NEWNODE, (long)(! ec->stk->u.num));
+      break;
+    default:
+      BADDATA("not"); 
+  }
 }
-PRIVATE void size_()
-{
-    long siz = 0;
-    ONEPARAM("size");
-    switch (stk->op)
-      { case SET_:
-	  { int i;
-	    for (i = 0; i < SETSIZE; i++)
-		if (stk->u.set & (1 << i)) siz++;
-	    break; }
-	case STRING_:
-	    siz = strlen(stk->u.str);
-	    break;
-	case LIST_:
-	  { Node *e = stk->u.lis;
-	    while (e != NULL) {e = e->next; siz++;};
-	    break; }
-	default :
-	    BADDATA("size"); }
-    UNARY(INTEGER_NEWNODE,siz);
+
+PRIVATE void size_(p_EC ec) {
+  long siz = 0;
+  ONEPARAM("size");
+  switch (ec->stk->op) {
+    case SET_:
+      {
+        int i;
+        for (i = 0; i < SETSIZE; i++)
+          if (ec->stk->u.set & (1 << i)) siz++;
+        break; 
+      }
+    case STRING_:
+      siz = strlen(ec->stk->u.str);
+      break;
+    case LIST_:
+      {
+        Node *e = ec->stk->u.lis;
+        while (e != NULL) {
+          e = e->next; siz++;
+        };
+        break; 
+      }
+    default :
+      BADDATA("size"); 
+  }
+  UNARY(INTEGER_NEWNODE,siz);
 }
-PRIVATE void small_()
-{
-    long sml = 0;
-    ONEPARAM("small");
-    switch (stk->op)
-      { case BOOLEAN_: case INTEGER_:
-	    sml = stk->u.num < 2;
-	    break;
-	case SET_:
-	    if (stk->u.set == 0) sml = 1; else
-	      { int i = 0;
-		while  (!(stk->u.set & (1 << i))) i++;
-D(		printf("small: first member found is %d\n",i); )
-		sml = (stk->u.set & ~(1 << i)) == 0; }
-	    break;
-	case STRING_:
-	    sml = stk->u.str[0] == '\0' || stk->u.str[1] == '\0';
-	    break;
-	case LIST_:
-	    sml = stk->u.lis == NULL || stk->u.lis->next == NULL;
-	    break;
-	default:
-	    BADDATA("small"); }
-    UNARY(BOOLEAN_NEWNODE,sml);
+
+PRIVATE void small_(p_EC ec) {
+  long sml = 0;
+  ONEPARAM("small");
+  switch (ec->stk->op) {
+    case BOOLEAN_: case INTEGER_:
+      sml = ec->stk->u.num < 2;
+      break;
+    case SET_:
+      if (ec->stk->u.set == 0)
+        sml = 1; 
+      else {
+        int i = 0;
+        while  (!(ec->stk->u.set & (1 << i))) i++;
+        D(		printf("small: first member found is %d\n",i); )
+          sml = (ec->stk->u.set & ~(1 << i)) == 0; 
+      }
+      break;
+    case STRING_:
+      sml = ec->stk->u.str[0] == '\0' || ec->stk->u.str[1] == '\0';
+      break;
+    case LIST_:
+      sml = ec->stk->u.lis == NULL || ec->stk->u.lis->next == NULL;
+      break;
+    default:
+      BADDATA("small"); 
+  }
+  UNARY(BOOLEAN_NEWNODE,sml);
 }
+
 #define TYPE(PROCEDURE,NAME,REL,TYP)				\
-    PRIVATE void PROCEDURE()					\
-    {   ONEPARAM(NAME);						\
-	UNARY(BOOLEAN_NEWNODE,(long)(stk->op REL TYP)); }
+    PRIVATE void PROCEDURE(p_EC ec) {					\
+        ONEPARAM(NAME);						\
+	UNARY(BOOLEAN_NEWNODE,(long)(ec->stk->op REL TYP)); }
 TYPE(integer_,"integer",==,INTEGER_)
 TYPE(char_,"char",==,CHAR_)
 TYPE(logical_,"logical",==,BOOLEAN_)
@@ -1375,57 +1508,56 @@ TYPE(file_,"file",==,FILE_)
 TYPE(user_,"user",==,USR_)
 
 #define USETOP(PROCEDURE,NAME,TYPE,BODY)			\
-    PRIVATE void PROCEDURE()					\
-    { ONEPARAM(NAME); TYPE(NAME); BODY; POP(stk); }
-USETOP( put_,"put",ONEPARAM, writefactor(stk, stdout);printf(" "))
-USETOP( putch_,"putch",NUMERICTYPE, printf("%c", (char) stk->u.num) )
-USETOP( putchars_,"putchars",STRING, printf(stk->u.str) )
-USETOP( setecho_,"setecho",NUMERICTYPE, echoflag = stk->u.num )
-USETOP( setautoput_,"setautoput",NUMERICTYPE, autoput = stk->u.num )
-USETOP( setundeferror_, "setundeferror", NUMERICTYPE, undeferror = stk->u.num )
-USETOP( settracegc_,"settracegc",NUMERICTYPE, tracegc = stk->u.num )
-USETOP( srand_,"srand",INTEGER, srand((unsigned int) stk->u.num) )
-USETOP( include_,"include",STRING, doinclude(stk->u.str) )
-USETOP( system_,"system",STRING, system(stk->u.str) )
+    PRIVATE void PROCEDURE(p_EC ec) {					\
+      ONEPARAM(NAME); TYPE(NAME); BODY; POP(ec->stk); }
+USETOP( put_,"put",ONEPARAM, writefactor(ec, ec->stk, stdout); printf(" "))
+USETOP( putch_,"putch",NUMERICTYPE, printf("%c", (char) ec->stk->u.num) )
+USETOP( putchars_,"putchars",STRING, printf("%s", ec->stk->u.str) )
+USETOP( setecho_,"setecho",NUMERICTYPE, ec->echoflag = ec->stk->u.num )
+USETOP( setautoput_,"setautoput",NUMERICTYPE, ec->autoput = ec->stk->u.num )
+USETOP( setundeferror_, "setundeferror", NUMERICTYPE, ec->undeferror = ec->stk->u.num )
+USETOP( settracegc_,"settracegc",NUMERICTYPE, ec->tracegc = ec->stk->u.num )
+USETOP( srand_,"srand",INTEGER, srand((unsigned int) ec->stk->u.num) )
+USETOP( include_,"include",STRING, doinclude(ec, ec->stk->u.str) )
+USETOP( system_,"system",STRING, system(ec->stk->u.str) )
 
-PRIVATE void undefs_(void)
-{
-    Entry *i = symtabindex;
-    Node *n = 0;
-    while (i != symtab)
-      { --i;
-	if ( (i->name[0] != 0) && (i->name[0] != '_') &&  (i->u.body == NULL) )
-	    n = STRING_NEWNODE(i->name,n); }
-    stk = LIST_NEWNODE(n,stk);
-}
-PRIVATE void argv_()
-{
-    int i;
-    dump1 = LIST_NEWNODE(NULL, dump1);
-    for(i = g_argc - 1; i >= 0; i--) {
-	DMP1 = STRING_NEWNODE(g_argv[i], DMP1);
-    }
-    NULLARY(LIST_NEWNODE, DMP1);
-    POP(dump1);
-    return;
+PRIVATE void undefs_(p_EC ec) {
+  Entry *i = ec->symtabindex;
+  Node *n = 0;
+  while (i != ec->symtab) {
+    --i;
+    if ( (i->name[0] != 0) && (i->name[0] != '_') && (i->u.body == NULL) )
+      n = STRING_NEWNODE(i->name, n); 
+  }
+  ec->stk = LIST_NEWNODE(n, ec->stk);
 }
 
-PRIVATE void get_()
-{
-    getsym();
-    readfactor();
+PRIVATE void argv_(p_EC ec) {
+  int i;
+  ec->dump1 = LIST_NEWNODE(NULL, ec->dump1);
+  for (i = ec->g_argc - 1; i >= 0; i--) {
+    DMP1 = STRING_NEWNODE(ec->g_argv[i], DMP1);
+  }
+  NULLARY(LIST_NEWNODE, DMP1);
+  POP(ec->dump1);
+  return;
 }
 
-PUBLIC void dummy_(void)
-{
+PRIVATE void get_(p_EC ec) {
+  getsym(ec);
+  readfactor(ec);
+}
+
+PUBLIC void dummy_(p_EC ec) {
     /* never called */
 }
+
 #define HELP(PROCEDURE,REL)					\
-PRIVATE void PROCEDURE()					\
-{   Entry *i = symtabindex;					\
+PRIVATE void PROCEDURE(p_EC ec) {				\
+    Entry *i = ec->symtabindex;					\
     int column = 0;						\
     int name_length;						\
-    while (i != symtab)						\
+    while (i != ec->symtab)						\
 	if ((--i)->name[0] REL '_')				\
 	  { name_length = strlen(i->name) + 1;			\
 	    if (column + name_length > 72)		\
@@ -1438,343 +1570,381 @@ HELP(h_help1_,==)
 
 /* - - - - -   C O M B I N A T O R S   - - - - - */
 
-PUBLIC void exeterm(Node *n)
-{
-    Node *stepper;
+PUBLIC void exeterm(p_EC ec, Node *n) {
+  Node *stepper;
 start:
-    if (n == NULL) return;
-    conts = LIST_NEWNODE(n,conts);
-    while (conts->u.lis != NULL)
-      {
-	if (tracegc > 5)
-	  { printf("exeterm1: %ld ",(long)conts->u.lis);
-	    printnode(conts->u.lis); }
-	stepper = conts->u.lis;
-	conts->u.lis = conts->u.lis->next;
-	switch (stepper->op)
-	  { case BOOLEAN_: case CHAR_: case INTEGER_: case FLOAT_:
-	    case SET_: case STRING_: case LIST_:
-		stk = newnode(stepper->op, stepper->u, stk); break;
-	    case USR_:
-              if (stepper->u.ent->u.body == NULL && undeferror)
-                  execerror("definition", stepper->u.ent->name);
-		if (stepper->next == NULL)
-		  { POP(conts);
-		    n = stepper->u.ent->u.body;
-		    goto start; }
-		  else exeterm(stepper->u.ent->u.body );
-		break;
-	    case COPIED_: case ILLEGAL_:
-		printf("exeterm: attempting to execute bad node\n");
-		printnode(stepper);
-		break;
-	    default:
-D(		printf("trying to do "); )
-D(		writefactor(dump1, stdout); )
-		(*(stepper->u.proc))(); break; }
-	if (tracegc > 5)
-	  { printf("exeterm2: %ld ",(long)stepper);
-            printnode(stepper); }
-/*
+  if (n == NULL)
+    return;
+  ec->conts = LIST_NEWNODE(n, ec->conts);
+  while (ec->conts->u.lis != NULL) {
+    if (ec->tracegc > 5) {
+      printf("exeterm1: %ld ",(long)ec->conts->u.lis);
+      printnode(ec, ec->conts->u.lis); 
+    }
+    stepper = ec->conts->u.lis;
+    ec->conts->u.lis = ec->conts->u.lis->next;
+    switch (stepper->op) {
+      case BOOLEAN_: case CHAR_: case INTEGER_: case FLOAT_:
+      case SET_: case STRING_: case LIST_:
+        ec->stk = newnode(ec, stepper->op, stepper->u, ec->stk); break;
+      case USR_:
+        if (stepper->u.ent->u.body == NULL && ec->undeferror)
+          execerror(ec, "definition", stepper->u.ent->name);
+        if (stepper->next == NULL) {
+          POP(ec->conts);
+          n = stepper->u.ent->u.body;
+          goto start;
+        }
+        else 
+          exeterm(ec, stepper->u.ent->u.body );
+        break;
+      case COPIED_: case ILLEGAL_:
+        printf("exeterm: attempting to execute bad node\n");
+        printnode(ec, stepper);
+        break;
+      default:
+        D(printf("trying to do "));
+        D(writefactor(ec->dump1, stdout));
+        (*(stepper->u.proc))(ec);
+        break;
+    }
+    if (ec->tracegc > 5) {
+      printf("exeterm2: %ld ",(long)stepper);
+      printnode(ec, stepper);
+    }
+    /*
 	stepper = stepper->next; }
-*/
-		}
-    POP(conts);
-D(  printf("after execution, stk is:\n"); )
-D(  writeterm(stk, stdout); )
-D(  printf("\n"); )
+    */
+  }
+
+  POP(ec->conts);
+  D(printf("after execution, ec->stk is:\n"));
+  D(writeterm(ec->stk, stdout));
+  D(printf("\n"));
 }
-PRIVATE void x_()
-{
+
+PRIVATE void x_(p_EC ec) {
     ONEPARAM("x");
     ONEQUOTE("x");
-    exeterm(stk->u.lis);
+    exeterm(ec, ec->stk->u.lis);
 }
-PRIVATE void i_()
-{
+
+PRIVATE void i_(p_EC ec) {
     ONEPARAM("i");
     ONEQUOTE("i");
     SAVESTACK;
-    POP(stk);
-    exeterm(SAVED1->u.lis);
-    POP(dump);
+    POP(ec->stk);
+    exeterm(ec, SAVED1->u.lis);
+    POP(ec->dump);
 }
-PRIVATE void dip_()
-{
+
+PRIVATE void dip_(p_EC ec) {
     TWOPARAMS("dip");
     ONEQUOTE("dip");
     SAVESTACK;
-    stk = stk->next->next;
-    exeterm(SAVED1->u.lis);
+    ec->stk = ec->stk->next->next;
+    exeterm(ec, SAVED1->u.lis);
     GNULLARY(SAVED2->op,SAVED2->u);
-    POP(dump);
+    POP(ec->dump);
 }
+
 #define N_ARY(PROCEDURE,NAME,PARAMCOUNT,TOP)			\
-PRIVATE void PROCEDURE()					\
-{   PARAMCOUNT(NAME);						\
+PRIVATE void PROCEDURE(p_EC ec)	{				\
+    PARAMCOUNT(NAME);						\
     ONEQUOTE(NAME);						\
     SAVESTACK;							\
-    POP(stk);							\
-    exeterm(SAVED1->u.lis);					\
-    if (stk == NULL) execerror("value to push",NAME);		\
-    stk = newnode(stk->op, stk->u,TOP);				\
-    POP(dump);							\
+    POP(ec->stk);							\
+    exeterm(ec, SAVED1->u.lis);					\
+    if (ec->stk == NULL) execerror(ec, "value to push",NAME);		\
+    ec->stk = newnode(ec, ec->stk->op, ec->stk->u,TOP);				\
+    POP(ec->dump);							\
 }
 N_ARY(nullary_,"nullary",ONEPARAM,SAVED2)
 N_ARY(unary_,"unary",TWOPARAMS,SAVED3)
 N_ARY(binary_,"binary",THREEPARAMS,SAVED4)
 N_ARY(ternary_,"ternary",FOURPARAMS,SAVED5)
+
 /*
-PRIVATE void nullary_()
-{
-    ONEPARAM("nullary");
-    SAVESTACK;
-    POP(stk);
-    exeterm(SAVED1->u.lis);
-    stk->next = SAVED2;
-    POP(dump);
+PRIVATE void nullary_(p_EC ec) {
+  ONEPARAM("nullary");
+  SAVESTACK;
+  POP(ec->stk);
+  exeterm(ec, SAVED1->u.lis);
+  ec->stk->next = SAVED2;
+  POP(ec->dump);
 }
 */
-PRIVATE void times_()
-{
-    int i,n;
-    TWOPARAMS("times");
-    ONEQUOTE("times");
-    INTEGER2("times");
-    SAVESTACK;
-    stk = stk->next->next;
-    n = SAVED2->u.num;
-    for (i = 1; i <= n; i++)
-	exeterm(SAVED1->u.lis);
-    POP(dump);
+
+PRIVATE void times_(p_EC ec) {
+  int i,n;
+  TWOPARAMS("times");
+  ONEQUOTE("times");
+  INTEGER2("times");
+  SAVESTACK;
+  ec->stk = ec->stk->next->next;
+  n = SAVED2->u.num;
+  for (i = 1; i <= n; i++)
+    exeterm(ec, SAVED1->u.lis);
+  POP(ec->dump);
 }
-PRIVATE void infra_()
-{
-    TWOPARAMS("infra");
-    ONEQUOTE("infra");
-    LIST2("infra");
-    SAVESTACK;
-    stk = SAVED2->u.lis;
-    exeterm(SAVED1->u.lis);
-    stk = LIST_NEWNODE(stk,SAVED3);
-    POP(dump);
+
+PRIVATE void infra_(p_EC ec) {
+  TWOPARAMS("infra");
+  ONEQUOTE("infra");
+  LIST2("infra");
+  SAVESTACK;
+  ec->stk = SAVED2->u.lis;
+  exeterm(ec, SAVED1->u.lis);
+  ec->stk = LIST_NEWNODE(ec->stk, SAVED3);
+  POP(ec->dump);
 }
-PRIVATE void app1_()
-{
-    TWOPARAMS("app1");
-    ONEQUOTE("app1");
-    SAVESTACK;
-    POP(stk);
-    exeterm(SAVED1->u.lis);
-    POP(dump);
+
+PRIVATE void app1_(p_EC ec) {
+  TWOPARAMS("app1");
+  ONEQUOTE("app1");
+  SAVESTACK;
+  POP(ec->stk);
+  exeterm(ec, SAVED1->u.lis);
+  POP(ec->dump);
 }
-PRIVATE void cleave_()
-{			/*  X [P1] [P2] cleave ==>  X1 X2	*/
-    THREEPARAMS("cleave");
-    TWOQUOTES("cleave");
-    SAVESTACK;
-    stk = SAVED3;
-    exeterm(SAVED2->u.lis);			/* [P1]		*/
-    dump1 = newnode(stk->op,stk->u,dump1);	/*  X1		*/
-    stk = SAVED3;
-    exeterm(SAVED1->u.lis);			/* [P2]		*/
-    dump1 = newnode(stk->op,stk->u,dump1);	/*  X2		*/
-    stk = dump1; dump1 = dump1->next->next; stk->next->next = SAVED4;
-    POP(dump);
+
+PRIVATE void cleave_(p_EC ec) {
+  /*  X [P1] [P2] cleave ==>  X1 X2	*/
+  THREEPARAMS("cleave");
+  TWOQUOTES("cleave");
+  SAVESTACK;
+  ec->stk = SAVED3;
+  exeterm(ec, SAVED2->u.lis);			/* [P1]		*/
+  ec->dump1 = newnode(ec, ec->stk->op,ec->stk->u,ec->dump1);	/*  X1		*/
+  ec->stk = SAVED3;
+  exeterm(ec, SAVED1->u.lis);			/* [P2]		*/
+  ec->dump1 = newnode(ec, ec->stk->op,ec->stk->u,ec->dump1);	/*  X2		*/
+  ec->stk = ec->dump1; ec->dump1 = ec->dump1->next->next; ec->stk->next->next = SAVED4;
+  POP(ec->dump);
 }
-PRIVATE void app11_()
-{
-    THREEPARAMS("app11");
-    ONEQUOTE("app11");
-    app1_();
-    stk->next = stk->next->next;
+
+PRIVATE void app11_(p_EC ec) {
+  THREEPARAMS("app11");
+  ONEQUOTE("app11");
+  app1_(ec);
+  ec->stk->next = ec->stk->next->next;
 }
-PRIVATE void unary2_()
-{			/*   Y  Z  [P]  unary2     ==>  Y'  Z'  */
-    THREEPARAMS("unary2");
-    ONEQUOTE("unary2");
-    SAVESTACK;
-    stk = SAVED2->next;				/* just Y on top */
-    exeterm(SAVED1->u.lis);			/* execute P */
-    dump1 = newnode(stk->op,stk->u,dump1);	/* save P(Y) */
-    stk = newnode(SAVED2->op,SAVED2->u,
-	  SAVED3->next);			/* just Z on top */
-    exeterm(SAVED1->u.lis);			/* execute P */
-    dump1 = newnode(stk->op,stk->u,dump1);	/* save P(Z) */
-    stk = dump1; dump1 = dump1->next->next; stk->next->next = SAVED4;
-    POP(dump);
+
+PRIVATE void unary2_(p_EC ec) {
+  /*   Y  Z  [P]  unary2     ==>  Y'  Z'  */
+  THREEPARAMS("unary2");
+  ONEQUOTE("unary2");
+  SAVESTACK;
+  ec->stk = SAVED2->next;				/* just Y on top */
+  exeterm(ec, SAVED1->u.lis);			/* execute P */
+  ec->dump1 = newnode(ec, ec->stk->op,ec->stk->u,ec->dump1);	/* save P(Y) */
+  ec->stk = newnode(ec, SAVED2->op,SAVED2->u, SAVED3->next);	/* just Z on top */
+  exeterm(ec, SAVED1->u.lis);			/* execute P */
+  ec->dump1 = newnode(ec, ec->stk->op,ec->stk->u,ec->dump1);	/* save P(Z) */
+  ec->stk = ec->dump1;
+  ec->dump1 = ec->dump1->next->next;
+  ec->stk->next->next = SAVED4;
+  POP(ec->dump);
 }
-PRIVATE void unary3_()
-{			/*  X Y Z [P]  unary3    ==>  X' Y' Z'	*/
-    FOURPARAMS("unary3");
-    ONEQUOTE("unary3");
-    SAVESTACK;
-    stk = SAVED3->next;				/* just X on top */
-    exeterm(SAVED1->u.lis);			/* execute P */
-    dump1 = newnode(stk->op,stk->u,dump1);	/* save p(X) */
-    stk = newnode(SAVED3->op,SAVED3->u,
-	  SAVED4->next);			/* just Y on top */
-    exeterm(SAVED1->u.lis);			/* execute P */
-    dump1 = newnode(stk->op,stk->u,dump1);	/* save P(Y) */
-    stk = newnode(SAVED2->op,SAVED2->u,
-	  SAVED4->next);			/* just Z on top */
-    exeterm(SAVED1->u.lis);			/* execute P */
-    dump1 = newnode(stk->op,stk->u,dump1);	/* save P(Z) */
-    stk = dump1; dump1 = dump1->next->next->next;
-    stk->next->next->next = SAVED5;
-    POP(dump);
+
+PRIVATE void unary3_(p_EC ec) {
+  /*  X Y Z [P]  unary3    ==>  X' Y' Z'	*/
+  FOURPARAMS("unary3");
+  ONEQUOTE("unary3");
+  SAVESTACK;
+  ec->stk = SAVED3->next;				/* just X on top */
+  exeterm(ec, SAVED1->u.lis);			/* execute P */
+  ec->dump1 = newnode(ec, ec->stk->op,ec->stk->u,ec->dump1);	/* save p(X) */
+  ec->stk = newnode(ec, SAVED3->op,SAVED3->u,
+      SAVED4->next);			/* just Y on top */
+  exeterm(ec, SAVED1->u.lis);			/* execute P */
+  ec->dump1 = newnode(ec, ec->stk->op,ec->stk->u,ec->dump1);	/* save P(Y) */
+  ec->stk = newnode(ec, SAVED2->op,SAVED2->u,
+      SAVED4->next);			/* just Z on top */
+  exeterm(ec, SAVED1->u.lis);			/* execute P */
+  ec->dump1 = newnode(ec, ec->stk->op,ec->stk->u,ec->dump1);	/* save P(Z) */
+  ec->stk = ec->dump1;
+  ec->dump1 = ec->dump1->next->next->next;
+  ec->stk->next->next->next = SAVED5;
+  POP(ec->dump);
 }
-PRIVATE void unary4_()
-{			/*  X Y Z W [P]  unary4    ==>  X' Y' Z' W'	*/
-    FIVEPARAMS("unary4");
-    ONEQUOTE("unary4");
-    SAVESTACK;
-    stk = SAVED4->next;				/* just X on top */
-    exeterm(SAVED1->u.lis);			/* execute P */
-    dump1 = newnode(stk->op,stk->u,dump1);	/* save p(X) */
-    stk = newnode(SAVED4->op,SAVED4->u,
-	  SAVED5->next);			/* just Y on top */
-    exeterm(SAVED1->u.lis);			/* execute P */
-    dump1 = newnode(stk->op,stk->u,dump1);	/* save P(Y) */
-    stk = newnode(SAVED3->op,SAVED3->u,
-	  SAVED5->next);			/* just Z on top */
-    exeterm(SAVED1->u.lis);			/* execute P */
-    dump1 = newnode(stk->op,stk->u,dump1);	/* save P(Z) */
-    stk = newnode(SAVED2->op,SAVED2->u,
-	  SAVED5->next);			/* just W on top */
-    exeterm(SAVED1->u.lis);			/* execute P */
-    dump1 = newnode(stk->op,stk->u,dump1);	/* save P(W) */
-    stk = dump1; dump1 = dump1->next->next->next->next;
-    stk->next->next->next->next = SAVED6;
-    POP(dump);
+
+PRIVATE void unary4_(p_EC ec) {
+  /*  X Y Z W [P]  unary4    ==>  X' Y' Z' W'	*/
+  FIVEPARAMS("unary4");
+  ONEQUOTE("unary4");
+  SAVESTACK;
+  ec->stk = SAVED4->next;				/* just X on top */
+  exeterm(ec, SAVED1->u.lis);			/* execute P */
+  ec->dump1 = newnode(ec, ec->stk->op,ec->stk->u,ec->dump1);	/* save p(X) */
+  ec->stk = newnode(ec, SAVED4->op,SAVED4->u,
+      SAVED5->next);			/* just Y on top */
+  exeterm(ec, SAVED1->u.lis);			/* execute P */
+  ec->dump1 = newnode(ec, ec->stk->op,ec->stk->u,ec->dump1);	/* save P(Y) */
+  ec->stk = newnode(ec, SAVED3->op,SAVED3->u,
+      SAVED5->next);			/* just Z on top */
+  exeterm(ec, SAVED1->u.lis);			/* execute P */
+  ec->dump1 = newnode(ec, ec->stk->op,ec->stk->u,ec->dump1);	/* save P(Z) */
+  ec->stk = newnode(ec, SAVED2->op,SAVED2->u,
+      SAVED5->next);			/* just W on top */
+  exeterm(ec, SAVED1->u.lis);			/* execute P */
+  ec->dump1 = newnode(ec, ec->stk->op,ec->stk->u,ec->dump1);	/* save P(W) */
+  ec->stk = ec->dump1; 
+  ec->dump1 = ec->dump1->next->next->next->next;
+  ec->stk->next->next->next->next = SAVED6;
+  POP(ec->dump);
 }
-PRIVATE void app12_()
-{
-    /*   X  Y  Z  [P]  app12  */
-    THREEPARAMS("app12");
-    unary2_();
-    stk->next->next = stk->next->next->next;	/* delete X */
+
+PRIVATE void app12_(p_EC ec) {
+  /*   X  Y  Z  [P]  app12  */
+  THREEPARAMS("app12");
+  unary2_(ec);
+  ec->stk->next->next = ec->stk->next->next->next;	/* delete X */
 }
-PRIVATE void map_()
-{
-    TWOPARAMS("map");
-    ONEQUOTE("map");
-    SAVESTACK;
-    switch(SAVED2->op)
-      { case LIST_:
-	  { dump1 = newnode(LIST_,SAVED2->u,dump1);	/* step old */
-	    dump2 = LIST_NEWNODE(0L,dump2);		/* head new */
-	    dump3 = LIST_NEWNODE(0L,dump3);		/* last new */
-	    while (DMP1 != NULL)
-	      { stk = newnode(DMP1->op,
-			      DMP1->u,SAVED3);
-		exeterm(SAVED1->u.lis);
-D(		printf("map: "); writefactor(stk, stdout); printf("\n"); )
-		if (DMP2 == NULL)			/* first */
-		  { DMP2 =
-			newnode(stk->op,stk->u,NULL);
-		    DMP3 = DMP2; }
-		else					/* further */
-		  { DMP3->next =
-			newnode(stk->op,stk->u,NULL);
-		    DMP3 = DMP3->next; }
-		DMP1 = DMP1->next; }
-	    stk = LIST_NEWNODE(DMP2,SAVED3);
-	    POP(dump3);
-	    POP(dump2);
-	    POP(dump1);
-	    break; }
-	case STRING_:
-	  { char *s, *resultstring; int j = 0;
-	    resultstring =
-		(char *) malloc(strlen(SAVED2->u.str) + 1);
-	    for (s = SAVED2->u.str; *s != '\0'; s++)
-	      { stk = CHAR_NEWNODE((long)*s,SAVED3);
-		exeterm(SAVED1->u.lis);
-		resultstring[j++] = stk->u.num; }
-	    stk = STRING_NEWNODE(resultstring,SAVED3);
-	    break; }
-	case SET_:
-	  { long i; long resultset = 0;
-	    for (i = 0; i < SETSIZE; i++)
-		if (SAVED2->u.set & (1 << i))
-		  { stk = INTEGER_NEWNODE(i,SAVED3);
-		    exeterm(SAVED1->u.lis);
-		    resultset = resultset | (1 << stk->u.num); }
-	    stk = SET_NEWNODE(resultset,SAVED3);
-	    break; }
-	default:
-	    BADAGGREGATE("map"); }
-    POP(dump);
+
+PRIVATE void map_(p_EC ec) {
+  TWOPARAMS("map");
+  ONEQUOTE("map");
+  SAVESTACK;
+  switch(SAVED2->op) {
+    case LIST_:
+      {
+        ec->dump1 = newnode(ec, LIST_,SAVED2->u,ec->dump1);	/* step old */
+        ec->dump2 = LIST_NEWNODE(0L, ec->dump2);		/* head new */
+        ec->dump3 = LIST_NEWNODE(0L, ec->dump3);		/* last new */
+        while (DMP1 != NULL) {
+          ec->stk = newnode(ec, DMP1->op, DMP1->u,SAVED3);
+          exeterm(ec, SAVED1->u.lis);
+          D(printf("map: "); writefactor(ec->stk, stdout); printf("\n"));
+          if (DMP2 == NULL)	{		/* first */
+            DMP2 = newnode(ec, ec->stk->op,ec->stk->u,NULL);
+            DMP3 = DMP2; 
+          }
+          else {					/* further */
+            DMP3->next = newnode(ec, ec->stk->op,ec->stk->u,NULL);
+            DMP3 = DMP3->next;
+          }
+          DMP1 = DMP1->next;
+        }
+        ec->stk = LIST_NEWNODE(DMP2, SAVED3);
+        POP(ec->dump3);
+        POP(ec->dump2);
+        POP(ec->dump1);
+        break;
+      }
+    case STRING_:
+      { 
+        char *s, *resultstring; int j = 0;
+        resultstring = (char *) malloc(strlen(SAVED2->u.str) + 1);
+        for (s = SAVED2->u.str; *s != '\0'; s++) {
+          ec->stk = CHAR_NEWNODE((long)*s,SAVED3);
+          exeterm(ec, SAVED1->u.lis);
+          resultstring[j++] = ec->stk->u.num;
+        }
+        ec->stk = STRING_NEWNODE(resultstring, SAVED3);
+        break;
+      }
+    case SET_:
+      {
+        long i; long resultset = 0;
+        for (i = 0; i < SETSIZE; i++)
+          if (SAVED2->u.set & (1 << i))
+          {
+            ec->stk = INTEGER_NEWNODE(i,SAVED3);
+            exeterm(ec, SAVED1->u.lis);
+            resultset = resultset | (1 << ec->stk->u.num);
+          }
+        ec->stk = SET_NEWNODE(resultset,SAVED3);
+        break;
+      }
+    default:
+      BADAGGREGATE("map");
+  }
+  POP(ec->dump);
 }
-PRIVATE void step_()
-{
-    TWOPARAMS("step");
-    ONEQUOTE("step");
-    SAVESTACK;
-    stk = stk->next->next;
-    switch(SAVED2->op)
-      { case LIST_:
-	  { dump1 = newnode(LIST_,SAVED2->u,dump1);
-	    while (DMP1 != NULL)
-	      { GNULLARY(DMP1->op,DMP1->u);
-		exeterm(SAVED1->u.lis);
-		DMP1 = DMP1->next; }
-	    POP(dump1);
-	    break; }
-	case STRING_:
-	  { char *s;
-	    for (s = SAVED2->u.str; *s != '\0'; s++)
-	      { stk = CHAR_NEWNODE((long)*s,stk);
-		exeterm(SAVED1->u.lis); }
-	    break; }
-	case SET_:
-	  { long i;
-	    for (i = 0; i < SETSIZE; i++)
-		if (SAVED2->u.set & (1 << i))
-		  { stk = INTEGER_NEWNODE(i,stk);
-		    exeterm(SAVED1->u.lis); }
-	    break; }
-	default:
-	    BADAGGREGATE("step"); }
-    POP(dump);
+
+PRIVATE void step_(p_EC ec) {
+  TWOPARAMS("step");
+  ONEQUOTE("step");
+  SAVESTACK;
+  ec->stk = ec->stk->next->next;
+  switch(SAVED2->op) {
+    case LIST_:
+      {
+        ec->dump1 = newnode(ec, LIST_,SAVED2->u,ec->dump1);
+        while (DMP1 != NULL) {
+          GNULLARY(DMP1->op,DMP1->u);
+          exeterm(ec, SAVED1->u.lis);
+          DMP1 = DMP1->next;
+        }
+        POP(ec->dump1);
+        break;
+      }
+    case STRING_:
+      {
+        char *s;
+        for (s = SAVED2->u.str; *s != '\0'; s++) {
+          ec->stk = CHAR_NEWNODE((long)*s,ec->stk);
+          exeterm(ec, SAVED1->u.lis);
+        }
+        break;
+      }
+    case SET_:
+      {
+        long i;
+        for (i = 0; i < SETSIZE; i++)
+          if (SAVED2->u.set & (1 << i)) {
+            ec->stk = INTEGER_NEWNODE(i,ec->stk);
+            exeterm(ec, SAVED1->u.lis);
+          }
+        break;
+      }
+    default:
+      BADAGGREGATE("step");
+  }
+  POP(ec->dump);
 }
-PRIVATE void fold_()
-{
-    THREEPARAMS("fold");
-    swapd_();
-    step_();
+
+PRIVATE void fold_(p_EC ec) {
+  THREEPARAMS("fold");
+  swapd_(ec);
+  step_(ec);
 }
-PRIVATE void cond_()
-{
-    int result = 0;
-    ONEPARAM("cond");
-				/* must check for QUOTES in list */
-    LIST("cond");
-    CHECKEMPTYLIST(stk->u.lis,"cond");
-    SAVESTACK;
-    dump1 = newnode(LIST_,stk->u,dump1);
-    while ( result == 0 &&
-	    DMP1 != NULL &&
-	    DMP1->next != NULL )
-      { stk = SAVED2;
-	exeterm(DMP1->u.lis->u.lis);
-	result = stk->u.num;
-	if (!result) DMP1 = DMP1->next; }
-    stk = SAVED2;
-    if (result) exeterm(DMP1->u.lis->next);
-	else exeterm(DMP1->u.lis); /* default */
-    POP(dump1);
-    POP(dump);
+
+PRIVATE void cond_(p_EC ec) {
+  int result = 0;
+  ONEPARAM("cond");
+  /* must check for QUOTES in list */
+  LIST("cond");
+  CHECKEMPTYLIST(ec->stk->u.lis,"cond");
+  SAVESTACK;
+  ec->dump1 = newnode(ec, LIST_,ec->stk->u,ec->dump1);
+  while ( result == 0 &&
+      DMP1 != NULL &&
+      DMP1->next != NULL ) {
+    ec->stk = SAVED2;
+    exeterm(ec, DMP1->u.lis->u.lis);
+    result = ec->stk->u.num;
+    if (!result)
+      DMP1 = DMP1->next;
+  }
+  ec->stk = SAVED2;
+  if (result)
+    exeterm(ec, DMP1->u.lis->next);
+  else
+    exeterm(ec, DMP1->u.lis); /* default */
+  POP(ec->dump1);
+  POP(ec->dump);
 }
+
 #define IF_TYPE(PROCEDURE,NAME,TYP)				\
-    PRIVATE void PROCEDURE()					\
+    PRIVATE void PROCEDURE(p_EC ec)					\
     {   TWOPARAMS(NAME);					\
 	TWOQUOTES(NAME);					\
         SAVESTACK;						\
-	stk = SAVED3;						\
-	exeterm(stk->op == TYP ? SAVED2->u.lis : SAVED1->u.lis);\
-	POP(dump); }
+	ec->stk = SAVED3;						\
+	exeterm(ec, ec->stk->op == TYP ? SAVED2->u.lis : SAVED1->u.lis);\
+	POP(ec->dump); }
 IF_TYPE(ifinteger_,"ifinteger",INTEGER_)
 IF_TYPE(ifchar_,"ifchar",CHAR_)
 IF_TYPE(iflogical_,"iflogical",BOOLEAN_)
@@ -1783,142 +1953,173 @@ IF_TYPE(ifset_,"ifset",SET_)
 IF_TYPE(iffloat_,"iffloat",FLOAT_)
 IF_TYPE(iffile_,"iffile",FILE_)
 IF_TYPE(iflist_,"iflist",LIST_)
-PRIVATE void filter_()
-{
-    TWOPARAMS("filter");
-    ONEQUOTE("filter");
-    SAVESTACK;
-    switch (SAVED2->op)
-      { case SET_ :
-	  { long j; long resultset = 0;
-	    for (j = 0; j < SETSIZE; j++)
-	      { if (SAVED2->u.set & (1 << j))
-		  { stk = INTEGER_NEWNODE(j,SAVED3);
-		    exeterm(SAVED1->u.lis);
-		    if (stk->u.num)
-			resultset = resultset | (1 << j); } }
-	    stk = SET_NEWNODE(resultset,SAVED3);
-	    break; }
-	case STRING_ :
-	  { char *s, *resultstring; int j = 0;
-	    resultstring =
-		(char *) malloc(strlen(SAVED2->u.str) + 1);
-	    for (s = SAVED2->u.str; *s != '\0'; s++)
-	      { stk = CHAR_NEWNODE((long)*s, SAVED3);
-		exeterm(SAVED1->u.lis);
-		if (stk->u.num) resultstring[j++] = *s; }
-	    resultstring[j] = '\0';
-	    stk = STRING_NEWNODE(resultstring,SAVED3);
-	    break; }
-        case LIST_:
-	  { dump1 = newnode(LIST_,SAVED2->u,dump1);	/* step old */
-	    dump2 = LIST_NEWNODE(0L,dump2);		/* head new */
-	    dump3 = LIST_NEWNODE(0L,dump3);		/* last new */
-	    while (DMP1 != NULL)
-	      { stk = newnode(DMP1->op,DMP1->u,SAVED3);
-		exeterm(SAVED1->u.lis);
-D(		printf("filter: "); writefactor(stk, stdout); printf("\n"); )
-		if (stk->u.num)				/* test */
-		    { if (DMP2 == NULL)		/* first */
-		      { DMP2 =
-			    newnode(DMP1->op,
-				DMP1->u,NULL);
-			DMP3 = DMP2; }
-		    else				/* further */
-		      { DMP3->next =
-			    newnode(DMP1->op,
-				DMP1->u,NULL);
-			DMP3 = DMP3->next; } }
-		DMP1 = DMP1->next; }
-	    stk = LIST_NEWNODE(DMP2,SAVED3);
-	    POP(dump3);
-	    POP(dump2);
-	    POP(dump1);
-	    break; }
-	default :
-	    BADAGGREGATE("filter"); }
-    POP(dump);
+
+PRIVATE void filter_(p_EC ec) {
+  TWOPARAMS("filter");
+  ONEQUOTE("filter");
+  SAVESTACK;
+  switch (SAVED2->op) {
+    case SET_ :
+      {
+        long j; long resultset = 0;
+        for (j = 0; j < SETSIZE; j++) {
+          if (SAVED2->u.set & (1 << j)) {
+            ec->stk = INTEGER_NEWNODE(j,SAVED3);
+            exeterm(ec, SAVED1->u.lis);
+            if (ec->stk->u.num)
+              resultset = resultset | (1 << j); 
+          } 
+        }
+        ec->stk = SET_NEWNODE(resultset,SAVED3);
+        break; 
+      }
+    case STRING_ :
+      {
+        char *s, *resultstring; int j = 0;
+        resultstring =
+          (char *) malloc(strlen(SAVED2->u.str) + 1);
+        for (s = SAVED2->u.str; *s != '\0'; s++) {
+          ec->stk = CHAR_NEWNODE((long)*s, SAVED3);
+          exeterm(ec, SAVED1->u.lis);
+          if (ec->stk->u.num)
+            resultstring[j++] = *s; 
+        }
+        resultstring[j] = '\0';
+        ec->stk = STRING_NEWNODE(resultstring, SAVED3);
+        break;
+      }
+    case LIST_:
+      {
+        ec->dump1 = newnode(ec, LIST_,SAVED2->u,ec->dump1);	/* step old */
+        ec->dump2 = LIST_NEWNODE(0L, ec->dump2);		/* head new */
+        ec->dump3 = LIST_NEWNODE(0L, ec->dump3);		/* last new */
+        while (DMP1 != NULL) {
+          ec->stk = newnode(ec, DMP1->op,DMP1->u,SAVED3);
+          exeterm(ec, SAVED1->u.lis);
+          D(printf("filter: "); writefactor(ec->stk, stdout); printf("\n"));
+            if (ec->stk->u.num) {				/* test */
+              if (DMP2 == NULL) {		/* first */
+                DMP2 = newnode(ec, DMP1->op, DMP1->u,NULL);
+                DMP3 = DMP2; 
+              } 
+              else {				/* further */
+                DMP3->next = newnode(ec, DMP1->op, DMP1->u,NULL);
+                DMP3 = DMP3->next;
+              }
+            }
+          DMP1 = DMP1->next;
+        }
+        ec->stk = LIST_NEWNODE(DMP2, SAVED3);
+        POP(ec->dump3);
+        POP(ec->dump2);
+        POP(ec->dump1);
+        break;
+      }
+    default :
+      BADAGGREGATE("filter"); 
+  }
+  POP(ec->dump);
 }
-PRIVATE void split_()
-{
-    TWOPARAMS("split");
-    SAVESTACK;
-    switch (SAVED2->op)
-      { case SET_ :
-	  { long j; long yes_set = 0, no_set = 0;
-	    for (j = 0; j < SETSIZE; j++)
-	      { if (SAVED2->u.set & (1 << j))
-		  { stk = INTEGER_NEWNODE(j,SAVED3);
-		    exeterm(SAVED1->u.lis);
-		    if (stk->u.num)
-			  yes_set = yes_set | (1 << j);
-		    else  no_set = no_set | (1 << j); } }
-	    stk = SET_NEWNODE(yes_set,SAVED3);
-	    NULLARY(SET_NEWNODE,no_set);
-	    break; }
-	case STRING_ :
-	  { char *s, *yesstring, *nostring; int yesptr = 0, noptr = 0;
-	    yesstring =
-		(char *) malloc(strlen(SAVED2->u.str) + 1);
-	    nostring =
-		(char *) malloc(strlen(SAVED2->u.str) + 1);
-	    for (s = SAVED2->u.str; *s != '\0'; s++)
-	      { stk = CHAR_NEWNODE((long) *s, SAVED3);
-		exeterm(SAVED1->u.lis);
-		if (stk->u.num) yesstring[yesptr++] = *s;
-			   else nostring[noptr++] = *s; }
-	    yesstring[yesptr] = '\0'; nostring[noptr] = '\0';
-	    stk = STRING_NEWNODE(yesstring,SAVED3);
-	    NULLARY(STRING_NEWNODE,nostring);
-	    break; }
-        case LIST_:
-	  { dump1 = newnode(LIST_,SAVED2->u,dump1);	/* step old */
-	    dump2 = LIST_NEWNODE(0L,dump2);		/* head true */
-	    dump3 = LIST_NEWNODE(0L,dump3);		/* last true */
-	    dump4 = LIST_NEWNODE(0L,dump4);		/* head false */
-	    dump5 = LIST_NEWNODE(0L,dump5);		/* last false */
-	    while (DMP1 != NULL)
-	      { stk = newnode(DMP1->op,DMP1->u,SAVED3);
-		exeterm(SAVED1->u.lis);
-D(		printf("split: "); writefactor(stk, stdout); printf("\n"); )
-		if (stk->u.num)				/* pass */
-		    if (DMP2 == NULL)		/* first */
-		      { DMP2 =
-			    newnode(DMP1->op,
-				DMP1->u,NULL);
-			DMP3 = DMP2; }
-		    else				/* further */
-		      { DMP3->next =
-			    newnode(DMP1->op,
-				DMP1->u,NULL);
-			DMP3 = DMP3->next; }
-		else					/* fail */
-		    if (DMP4 == NULL)		/* first */
-		      { DMP4 =
-			    newnode(DMP1->op,
-				DMP1->u,NULL);
-			DMP5 = DMP4; }
-		    else				/* further */
-		      { DMP5->next =
-			    newnode(DMP1->op,
-				DMP1->u,NULL);
-			DMP5 = DMP5->next; }
-		DMP1 = DMP1->next; }
-	    stk = LIST_NEWNODE(DMP2,SAVED3);
-	    NULLARY(LIST_NEWNODE,DMP4);
-	    POP(dump5);
-	    POP(dump4);
-	    POP(dump3);
-	    POP(dump2);
-	    POP(dump1);
-	    break; }
-	default :
-	    BADAGGREGATE("split"); }
-    POP(dump);
+
+PRIVATE void split_(p_EC ec) {
+  TWOPARAMS("split");
+  SAVESTACK;
+  switch (SAVED2->op) {
+    case SET_ :
+      {
+        long j; long yes_set = 0, no_set = 0;
+        for (j = 0; j < SETSIZE; j++) {
+          if (SAVED2->u.set & (1 << j)) {
+            ec->stk = INTEGER_NEWNODE(j,SAVED3);
+            exeterm(ec, SAVED1->u.lis);
+            if (ec->stk->u.num)
+              yes_set = yes_set | (1 << j);
+            else  
+              no_set = no_set | (1 << j);
+          }
+        }
+        ec->stk = SET_NEWNODE(yes_set,SAVED3);
+        NULLARY(SET_NEWNODE,no_set);
+        break;
+      }
+    case STRING_ :
+      {
+        char *s, *yesstring, *nostring; int yesptr = 0, noptr = 0;
+        yesstring = (char *) malloc(strlen(SAVED2->u.str) + 1);
+        nostring = (char *) malloc(strlen(SAVED2->u.str) + 1);
+        for (s = SAVED2->u.str; *s != '\0'; s++)
+        {
+          ec->stk = CHAR_NEWNODE((long) *s, SAVED3);
+          exeterm(ec, SAVED1->u.lis);
+          if (ec->stk->u.num)
+            yesstring[yesptr++] = *s;
+          else
+            nostring[noptr++] = *s;
+        }
+        yesstring[yesptr] = '\0';
+        nostring[noptr] = '\0';
+        ec->stk = STRING_NEWNODE(yesstring,SAVED3);
+        NULLARY(STRING_NEWNODE,nostring);
+        break;
+      }
+    case LIST_:
+      {
+        ec->dump1 = newnode(ec, LIST_,SAVED2->u,ec->dump1);	/* step old */
+        ec->dump2 = LIST_NEWNODE(0L, ec->dump2);		/* head true */
+        ec->dump3 = LIST_NEWNODE(0L, ec->dump3);		/* last true */
+        ec->dump4 = LIST_NEWNODE(0L, ec->dump4);		/* head false */
+        ec->dump5 = LIST_NEWNODE(0L, ec->dump5);		/* last false */
+        while (DMP1 != NULL)
+        {
+          ec->stk = newnode(ec, DMP1->op,DMP1->u,SAVED3);
+          exeterm(ec, SAVED1->u.lis);
+          D(printf("split: "); writefactor(ec->stk, stdout); printf("\n"));
+          if (ec->stk->u.num)				/* pass */
+            if (DMP2 == NULL) {		/* first */
+              DMP2 =
+                newnode(ec, DMP1->op,
+                    DMP1->u,NULL);
+              DMP3 = DMP2;
+            }
+            else {				/* further */
+              DMP3->next =
+                newnode(ec, DMP1->op,
+                    DMP1->u,NULL);
+              DMP3 = DMP3->next;
+            }
+          else					/* fail */
+            if (DMP4 == NULL)	{	/* first */
+              DMP4 =
+                newnode(ec, DMP1->op,
+                    DMP1->u,NULL);
+              DMP5 = DMP4;
+            }
+            else { 				/* further */
+              DMP5->next =
+                newnode(ec, DMP1->op,
+                    DMP1->u,NULL);
+              DMP5 = DMP5->next;
+            }
+          DMP1 = DMP1->next;
+        }
+        ec->stk = LIST_NEWNODE(DMP2, SAVED3);
+        NULLARY(LIST_NEWNODE, DMP4);
+        POP(ec->dump5);
+        POP(ec->dump4);
+        POP(ec->dump3);
+        POP(ec->dump2);
+        POP(ec->dump1);
+        break;
+      }
+    default :
+      BADAGGREGATE("split");
+  }
+  POP(ec->dump);
 }
+
 #define SOMEALL(PROCEDURE,NAME,INITIAL)				\
-PRIVATE void PROCEDURE()					\
-{   long result = INITIAL;					\
+PRIVATE void PROCEDURE(p_EC ec)	{				\
+    long result = INITIAL;					\
     TWOPARAMS(NAME);						\
     ONEQUOTE(NAME);						\
     SAVESTACK;							\
@@ -1927,403 +2128,459 @@ PRIVATE void PROCEDURE()					\
 	  { long j;						\
 	    for (j = 0; j < SETSIZE && result == INITIAL; j++)	\
 	      { if (SAVED2->u.set & (1 << j))			\
-		  { stk = INTEGER_NEWNODE(j,SAVED3);		\
-		    exeterm(SAVED1->u.lis);			\
-		    if (stk->u.num != INITIAL)			\
+		  { ec->stk = INTEGER_NEWNODE(j,SAVED3);		\
+		    exeterm(ec, SAVED1->u.lis);			\
+		    if (ec->stk->u.num != INITIAL)			\
 			result = 1 - INITIAL; } }		\
 	    break; }						\
 	case STRING_ :						\
 	  { char *s;						\
 	    for (s = SAVED2->u.str;				\
 		 *s != '\0' && result == INITIAL; s++)		\
-	      { stk = CHAR_NEWNODE((long)*s,SAVED3);			\
-		exeterm(SAVED1->u.lis);				\
-		if (stk->u.num != INITIAL)			\
+	      { ec->stk = CHAR_NEWNODE((long)*s,SAVED3);			\
+		exeterm(ec, SAVED1->u.lis);				\
+		if (ec->stk->u.num != INITIAL)			\
 		    result = 1 - INITIAL; }			\
 	    break; }						\
 	case LIST_ :						\
-	  { dump1 = newnode(LIST_,SAVED2->u,dump1);		\
+	  { ec->dump1 = newnode(ec, LIST_,SAVED2->u,ec->dump1);		\
 	    while (DMP1 != NULL && result == INITIAL)	\
-	      { stk = newnode(DMP1->op,			\
+	      { ec->stk = newnode(ec, DMP1->op,			\
 			DMP1->u,SAVED3);		\
-		exeterm(SAVED1->u.lis);				\
-		if (stk->u.num != INITIAL)			\
+		exeterm(ec, SAVED1->u.lis);				\
+		if (ec->stk->u.num != INITIAL)			\
 		     result = 1 - INITIAL; 			\
 		DMP1 = DMP1->next; }		\
-	    POP(dump1);				\
+	    POP(ec->dump1);				\
 	    break; }						\
 	default :						\
 	    BADAGGREGATE(NAME); }				\
-    stk = BOOLEAN_NEWNODE(result,SAVED3);			\
-    POP(dump);							\
+    ec->stk = BOOLEAN_NEWNODE(result,SAVED3);			\
+    POP(ec->dump);							\
 }
 SOMEALL(some_,"some",0L)
 SOMEALL(all_,"all",1L)
 
-PRIVATE void primrec_()
-{
-    int n = 0; int i;
-    THREEPARAMS("primrec");
-    SAVESTACK;
-    stk = stk->next->next->next;
-    switch (SAVED3->op)
-      { case LIST_:
-	  { Node *current = SAVED3->u.lis;
-	    while (current != NULL)
-	      { stk = newnode(current->op,current->u,stk);
-		current = current->next;
-		n++; }
-	    break; }
-	case STRING_:
-	  { char *s;
-	    for (s = SAVED3->u.str; *s != '\0'; s++)
-	      { stk = CHAR_NEWNODE((long) *s, stk);
-		n++; }
-	    break; }
-	case SET_:
-	  { long j; long set = SAVED3->u.set;
-	    for (j = 0; j < SETSIZE; j++)
-	        if (set & (1 << j))
-		  { stk = INTEGER_NEWNODE(j,stk);
-		    n++; }
-	    break; }
-	case INTEGER_:
-	  { long j;
-	    for (j = SAVED3->u.num; j > 0; j--)
-	      { stk = INTEGER_NEWNODE(j, stk);
-		n++; }
-	    break; }
-	default:
-	    BADDATA("primrec"); }
-    exeterm(SAVED2->u.lis);
-    for (i = 1; i <= n; i++)
-	exeterm(SAVED1->u.lis);
-    POP(dump);
+PRIVATE void primrec_(p_EC ec) {
+  int n = 0; int i;
+  THREEPARAMS("primrec");
+  SAVESTACK;
+  ec->stk = ec->stk->next->next->next;
+  switch (SAVED3->op) {
+    case LIST_:
+      {
+        Node *current = SAVED3->u.lis;
+        while (current != NULL) {
+          ec->stk = newnode(ec, current->op,current->u,ec->stk);
+          current = current->next;
+          n++;
+        }
+        break;
+      }
+    case STRING_:
+      {
+        char *s;
+        for (s = SAVED3->u.str; *s != '\0'; s++) {
+          ec->stk = CHAR_NEWNODE((long) *s, ec->stk);
+          n++;
+        }
+        break;
+      }
+    case SET_:
+      {
+        long j; long set = SAVED3->u.set;
+        for (j = 0; j < SETSIZE; j++)
+          if (set & (1 << j)) {
+            ec->stk = INTEGER_NEWNODE(j,ec->stk);
+            n++;
+          }
+        break;
+      }
+    case INTEGER_:
+      {
+        long j;
+        for (j = SAVED3->u.num; j > 0; j--) {
+          ec->stk = INTEGER_NEWNODE(j, ec->stk);
+          n++;
+        }
+        break;
+      }
+    default:
+      BADDATA("primrec");
+  }
+  exeterm(ec, SAVED2->u.lis);
+  for (i = 1; i <= n; i++)
+    exeterm(ec, SAVED1->u.lis);
+  POP(ec->dump);
 }
-PRIVATE void tailrecaux()
-{
-    int result;
-    tailrec:
-    dump1 = LIST_NEWNODE(stk,dump1);
-    exeterm(SAVED3->u.lis);
-    result = stk->u.num;
-    stk = DMP1; POP(dump1);
-    if (result) exeterm(SAVED2->u.lis); else
-      { exeterm(SAVED1->u.lis);
-	goto tailrec; }
+
+PRIVATE void tailrecaux(p_EC ec) {
+  int result;
+tailrec:
+  ec->dump1 = LIST_NEWNODE(ec->stk, ec->dump1);
+  exeterm(ec, SAVED3->u.lis);
+  result = ec->stk->u.num;
+  ec->stk = DMP1; POP(ec->dump1);
+  if (result)
+    exeterm(ec, SAVED2->u.lis)
+    ; 
+  else {
+    exeterm(ec, SAVED1->u.lis);
+    goto tailrec; 
+  }
 }
-PRIVATE void tailrec_()
-{
-    THREEPARAMS("tailrec");
-    SAVESTACK;
-    stk = SAVED4;
-    tailrecaux();
-    POP(dump);
+
+PRIVATE void tailrec_(p_EC ec) {
+  THREEPARAMS("tailrec");
+  SAVESTACK;
+  ec->stk = SAVED4;
+  tailrecaux(ec);
+  POP(ec->dump);
 }
-PRIVATE void construct_()
-{			/* [P] [[P1] [P2] ..] -> X1 X2 ..	*/
-    TWOPARAMS("construct");
-    TWOQUOTES("construct");
-    SAVESTACK;
-    stk = SAVED3;			/* pop progs		*/
-    dump1 = LIST_NEWNODE(dump2,dump1);	/* save dump2		*/
-    dump2 = stk;			/* save old stack	*/
-    exeterm(SAVED2->u.lis);		/* [P]			*/
-    dump3 = LIST_NEWNODE(stk,dump3);	/* save current stack	*/
-    dump4 = newnode(LIST_,SAVED1->u,dump4);	/* step [..]	*/
-    while (DMP4 != NULL)
-      { stk = DMP3;			/* restore new stack	*/
-	exeterm(DMP4->u.lis);
-	dump2 = newnode(stk->op,stk->u,dump2); /* result	*/
-	DMP4 = DMP4->next; }
-    POP(dump4);
-    POP(dump3);
-    stk = dump2; dump2 = dump1->u.lis;	/* restore dump2	*/
-    POP(dump1);
-    POP(dump);
+
+PRIVATE void construct_(p_EC ec) {
+  /* [P] [[P1] [P2] ..] -> X1 X2 ..	*/
+  TWOPARAMS("construct");
+  TWOQUOTES("construct");
+  SAVESTACK;
+  ec->stk = SAVED3;			/* pop progs		*/
+  ec->dump1 = LIST_NEWNODE(ec->dump2, ec->dump1);	/* save dump2		*/
+  ec->dump2 = ec->stk;			/* save old stack	*/
+  exeterm(ec, SAVED2->u.lis);		/* [P]			*/
+  ec->dump3 = LIST_NEWNODE(ec->stk, ec->dump3);	/* save current stack	*/
+  ec->dump4 = newnode(ec, LIST_,SAVED1->u,ec->dump4);	/* step [..]	*/
+  while (DMP4 != NULL) {
+    ec->stk = DMP3;			/* restore new stack	*/
+    exeterm(ec, DMP4->u.lis);
+    ec->dump2 = newnode(ec, ec->stk->op,ec->stk->u,ec->dump2); /* result	*/
+    DMP4 = DMP4->next;
+  }
+  POP(ec->dump4);
+  POP(ec->dump3);
+  ec->stk = ec->dump2; 
+  ec->dump2 = ec->dump1->u.lis;	/* restore dump2	*/
+  POP(ec->dump1);
+  POP(ec->dump);
 }
-PRIVATE void branch_()
-{
-    THREEPARAMS("branch");
-    TWOQUOTES("branch");
-    SAVESTACK;
-    stk = SAVED4;
-    exeterm(SAVED3->u.num ? SAVED2->u.lis : SAVED1->u.lis);
-    POP(dump);
+
+PRIVATE void branch_(p_EC ec) {
+  THREEPARAMS("branch");
+  TWOQUOTES("branch");
+  SAVESTACK;
+  ec->stk = SAVED4;
+  exeterm(ec, SAVED3->u.num ? SAVED2->u.lis : SAVED1->u.lis);
+  POP(ec->dump);
 }
-PRIVATE void while_()
+
+PRIVATE void while_(p_EC ec)
 {
-    TWOPARAMS("while");
-    TWOQUOTES("while");
-    SAVESTACK;
-    do
-      { stk = SAVED3;
-	exeterm(SAVED2->u.lis);	/* TEST */
-	if (! stk->u.num) break;
-	stk = SAVED3;
-	exeterm(SAVED1->u.lis);		/* DO */
-	SAVED3 = stk; }
-	while (1);
-    stk = SAVED3;
-    POP(dump);
+  TWOPARAMS("while");
+  TWOQUOTES("while");
+  SAVESTACK;
+  do {
+    ec->stk = SAVED3;
+    exeterm(ec, SAVED2->u.lis);	/* TEST */
+    if (! ec->stk->u.num)
+      break;
+    ec->stk = SAVED3;
+    exeterm(ec, SAVED1->u.lis);		/* DO */
+    SAVED3 = ec->stk;
+  }
+  while (1)
+    ;
+  ec->stk = SAVED3;
+  POP(ec->dump);
 }
-PRIVATE void ifte_()
-{
-    int result;
-    THREEPARAMS("ifte");
-    THREEQUOTES("ifte");
-    SAVESTACK;
-    stk = SAVED4;
-    exeterm(SAVED3->u.lis);
-    result = stk->u.num;
-    stk = SAVED4;
-    exeterm(result ? SAVED2->u.lis : SAVED1->u.lis);
-    POP(dump);
+
+PRIVATE void ifte_(p_EC ec) {
+  int result;
+  THREEPARAMS("ifte");
+  THREEQUOTES("ifte");
+  SAVESTACK;
+  ec->stk = SAVED4;
+  exeterm(ec, SAVED3->u.lis);
+  result = ec->stk->u.num;
+  ec->stk = SAVED4;
+  exeterm(ec, result ? SAVED2->u.lis : SAVED1->u.lis);
+  POP(ec->dump);
 }
-PRIVATE void condlinrecaux()
+
+PRIVATE void condlinrecaux(p_EC ec)
 {
-    int result = 0;
-    dump1 = newnode(LIST_,SAVED1->u,dump1);
-    dump2 = LIST_NEWNODE(stk,dump2);
-    while ( result == 0 &&
-	    DMP1 != NULL && DMP1->next != NULL )
-      { stk = DMP2;
-	exeterm(DMP1->u.lis->u.lis);
-	result = stk->u.num;
-	if (!result) DMP1 = DMP1->next; }
-    stk = DMP2;
-    if (result)
-      { exeterm(DMP1->u.lis->next->u.lis);
-	if (DMP1->u.lis->next->next != NULL)
-	  { condlinrecaux();
-	    exeterm(DMP1->u.lis->next->next->u.lis); } }
-    else
-      { exeterm(DMP1->u.lis->u.lis);
-	if (DMP1->u.lis->next != NULL)
-	  { condlinrecaux();
-	    exeterm(DMP1->u.lis->next->u.lis); } }
-    POP(dump2);
-    POP(dump1);
+  int result = 0;
+  ec->dump1 = newnode(ec, LIST_,SAVED1->u,ec->dump1);
+  ec->dump2 = LIST_NEWNODE(ec->stk, ec->dump2);
+  while ( result == 0 &&
+      DMP1 != NULL && DMP1->next != NULL ) {
+    ec->stk = DMP2;
+    exeterm(ec, DMP1->u.lis->u.lis);
+    result = ec->stk->u.num;
+    if (!result) DMP1 = DMP1->next;
+  }
+  ec->stk = DMP2;
+  if (result) {
+    exeterm(ec, DMP1->u.lis->next->u.lis);
+    if (DMP1->u.lis->next->next != NULL) {
+      condlinrecaux(ec);
+      exeterm(ec, DMP1->u.lis->next->next->u.lis);
+    }
+  }
+  else {
+    exeterm(ec, DMP1->u.lis->u.lis);
+    if (DMP1->u.lis->next != NULL) {
+      condlinrecaux(ec);
+      exeterm(ec, DMP1->u.lis->next->u.lis);
+    }
+  }
+  POP(ec->dump2);
+  POP(ec->dump1);
 }
-PRIVATE void condlinrec_()
-{
-    ONEPARAM("condlinrec");
-    LIST("condlinrec");
-    CHECKEMPTYLIST(stk->u.lis,"condlinrec");
-    SAVESTACK;
-    stk = SAVED2;
-    condlinrecaux();
-    POP(dump);
+
+PRIVATE void condlinrec_(p_EC ec) {
+  ONEPARAM("condlinrec");
+  LIST("condlinrec");
+  CHECKEMPTYLIST(ec->stk->u.lis,"condlinrec");
+  SAVESTACK;
+  ec->stk = SAVED2;
+  condlinrecaux(ec);
+  POP(ec->dump);
 }
-PRIVATE void condnestrecaux()
-{
-    int result = 0;
-    dump1 = newnode(LIST_,SAVED1->u,dump1);
-    dump2 = LIST_NEWNODE(stk,dump2);
-    while ( result == 0 &&
-	    DMP1 != NULL && DMP1->next != NULL )
-      { stk = DMP2;
-	exeterm(DMP1->u.lis->u.lis);
-	result = stk->u.num;
-	if (!result) DMP1 = DMP1->next; }
-    stk = DMP2;
-    dump3 = LIST_NEWNODE(
-		(result ? DMP1->u.lis->next : DMP1->u.lis),
-		dump3 );
-    exeterm(DMP3->u.lis);
+
+PRIVATE void condnestrecaux(p_EC ec) {
+  int result = 0;
+  ec->dump1 = newnode(ec, LIST_,SAVED1->u,ec->dump1);
+  ec->dump2 = LIST_NEWNODE(ec->stk, ec->dump2);
+  while ( result == 0 &&
+      DMP1 != NULL && DMP1->next != NULL )
+  {
+    ec->stk = DMP2;
+    exeterm(ec, DMP1->u.lis->u.lis);
+    result = ec->stk->u.num;
+    if (!result)
+      DMP1 = DMP1->next;
+  }
+  ec->stk = DMP2;
+  ec->dump3 = LIST_NEWNODE((result ? DMP1->u.lis->next : DMP1->u.lis), ec->dump3);
+  exeterm(ec, DMP3->u.lis);
+  DMP3 = DMP3->next;
+  while (DMP3 != NULL) {
+    condnestrecaux(ec);
+    exeterm(ec, DMP3->u.lis);
     DMP3 = DMP3->next;
-    while (DMP3 != NULL)
-    { condnestrecaux();
-      exeterm(DMP3->u.lis);
-      DMP3 = DMP3->next; }
-    POP(dump3);
-/*
-    if (result)
-      { exeterm(DMP1->u.lis->next->u.lis);
-	if (DMP1->u.lis->next->next != NULL)
-	  { condnestrecaux();
-	    exeterm(DMP1->u.lis->next->next->u.lis); } }
-    else
-      { exeterm(DMP1->u.lis->u.lis);
-	if (DMP1->u.lis->next != NULL)
-	  { condnestrecaux();
-	    exeterm(DMP1->u.lis->next->u.lis); } }
-*/
-    POP(dump2);
-    POP(dump1);
+  }
+  POP(ec->dump3);
+  /*
+  if (result) {
+    exeterm(ec, DMP1->u.lis->next->u.lis);
+    if (DMP1->u.lis->next->next != NULL) {
+      condnestrecaux(ec);
+      exeterm(ec, DMP1->u.lis->next->next->u.lis);
+    }
+  }
+  else {
+    exeterm(ec, DMP1->u.lis->u.lis);
+    if (DMP1->u.lis->next != NULL) {
+      condnestrecaux(ec);
+      exeterm(ec, DMP1->u.lis->next->u.lis);
+    }
+  }
+  */
+  POP(ec->dump2);
+  POP(ec->dump1);
 }
-PRIVATE void condnestrec_()
-{
-    ONEPARAM("condnestrec");
-    LIST("condnestrec");
-    CHECKEMPTYLIST(stk->u.lis,"condnestrec");
-    SAVESTACK;
-    stk = SAVED2;
-    condnestrecaux();
-    POP(dump);
+
+PRIVATE void condnestrec_(p_EC ec) {
+  ONEPARAM("condnestrec");
+  LIST("condnestrec");
+  CHECKEMPTYLIST(ec->stk->u.lis,"condnestrec");
+  SAVESTACK;
+  ec->stk = SAVED2;
+  condnestrecaux(ec);
+  POP(ec->dump);
 }
-PRIVATE void linrecaux()
-{
-    int result;
-    dump1 = LIST_NEWNODE(stk,dump1);
-    exeterm(SAVED4->u.lis);
-    result = stk->u.num;
-    stk = DMP1; POP(dump1);
-    if (result) exeterm(SAVED3->u.lis); else
-      { exeterm(SAVED2->u.lis);
-	linrecaux();
-	exeterm(SAVED1->u.lis); }
+
+PRIVATE void linrecaux(p_EC ec) {
+  int result;
+  ec->dump1 = LIST_NEWNODE(ec->stk,ec->dump1);
+  exeterm(ec, SAVED4->u.lis);
+  result = ec->stk->u.num;
+  ec->stk = DMP1; POP(ec->dump1);
+  if (result)
+    exeterm(ec, SAVED3->u.lis); 
+  else {
+    exeterm(ec, SAVED2->u.lis);
+    linrecaux(ec);
+    exeterm(ec, SAVED1->u.lis);
+  }
 }
-PRIVATE void linrec_()
-{
-    FOURPARAMS("linrec");
-    FOURQUOTES("linrec");
-    SAVESTACK;
-    stk = SAVED5;
-    linrecaux();
-    POP(dump);
+
+PRIVATE void linrec_(p_EC ec) {
+  FOURPARAMS("linrec");
+  FOURQUOTES("linrec");
+  SAVESTACK;
+  ec->stk = SAVED5;
+  linrecaux(ec);
+  POP(ec->dump);
 }
-PRIVATE void binrecaux()
-{
-    int result;
-    dump1 = LIST_NEWNODE(stk,dump1);
-    exeterm(SAVED4->u.lis);
-    result = stk->u.num;
-    stk = DMP1; POP(dump1);
-    if (result) exeterm(SAVED3->u.lis); else
-      { exeterm(SAVED2->u.lis);		/* split */
-	dump2 = newnode(stk->op,stk->u,dump2);
-	POP(stk);
-	binrecaux();			/* first */
-	GNULLARY(dump2->op,dump2->u);
-	POP(dump2);
-	binrecaux();			/* second */
-	exeterm(SAVED1->u.lis); }	/* combine */
+
+PRIVATE void binrecaux(p_EC ec) {
+  int result;
+  ec->dump1 = LIST_NEWNODE(ec->stk,ec->dump1);
+  exeterm(ec, SAVED4->u.lis);
+  result = ec->stk->u.num;
+  ec->stk = DMP1;
+  POP(ec->dump1);
+  if (result) 
+    exeterm(ec, SAVED3->u.lis);
+  else
+  {
+    exeterm(ec, SAVED2->u.lis);		/* split */
+    ec->dump2 = newnode(ec, ec->stk->op,ec->stk->u,ec->dump2);
+    POP(ec->stk);
+    binrecaux(ec);			/* first */
+    GNULLARY(ec->dump2->op,ec->dump2->u);
+    POP(ec->dump2);
+    binrecaux(ec);			/* second */
+    exeterm(ec, SAVED1->u.lis);		/* combine */
+  }
 }
-PRIVATE void binrec_()
+
+PRIVATE void binrec_(p_EC ec)
 {
     FOURPARAMS("binrec");
     FOURQUOTES("binrec");
     SAVESTACK;
-    stk = SAVED5;
-    binrecaux();
-    POP(dump);
+    ec->stk = SAVED5;
+    binrecaux(ec);
+    POP(ec->dump);
 }
-PRIVATE void treestepaux(item)
-    Node *item;
-{
-    if (item->op != LIST_)
-      { GNULLARY(item->op,item->u);
-	exeterm(SAVED1->u.lis); }
-    else
-      { dump1 = newnode(LIST_,item->u,dump1);
-	while (DMP1 != NULL)
-	  { treestepaux(DMP1);
-	    DMP1 = DMP1->next; }
-	POP(dump1); }
+
+PRIVATE void treestepaux(p_EC ec, p_Node item) {
+  if (item->op != LIST_) {
+    GNULLARY(item->op,item->u);
+    exeterm(ec, SAVED1->u.lis);
+  }
+  else {
+    ec->dump1 = newnode(ec, LIST_,item->u,ec->dump1);
+    while (DMP1 != NULL) {
+      treestepaux(ec, DMP1);
+      DMP1 = DMP1->next;
+    }
+    POP(ec->dump1);
+  }
 }
-PRIVATE void treestep_()
-{
+
+PRIVATE void treestep_(p_EC ec) {
     TWOPARAMS("treestep");
     ONEQUOTE("treestep");
     SAVESTACK;
-    stk = SAVED3;
-    treestepaux(SAVED2);
-    POP(dump);
-}
-PRIVATE void treerecaux()
-{
-    if (stk->next->op == LIST_)
-      { NULLARY(LIST_NEWNODE,ANON_FUNCT_NEWNODE(treerecaux,NULL));
-	cons_();		/*  D  [[[O] C] ANON_FUNCT_]	*/
-D(	printf("treerecaux: stack = "); )
-D(	writeterm(stk, stdout); printf("\n"); )
-	exeterm(stk->u.lis->u.lis->next); }
-    else
-      { Node *n = stk;
-	POP(stk);
-	exeterm(n->u.lis->u.lis); }
-}
-PRIVATE void treerec_()
-{
-    THREEPARAMS("treerec");
-    cons_();
-D(  printf("deep: stack = "); writeterm(stk, stdout); printf("\n"); )
-    treerecaux();
-}
-PRIVATE void genrecaux()
-{
-    int result;
-D(  printf("genrecaux: stack = "); )
-D(  writeterm(stk, stdout); printf("\n"); )
-    SAVESTACK;
-    POP(stk);
-    exeterm(SAVED1->u.lis->u.lis);		/*	[I]	*/
-    result = stk->u.num;
-    stk = SAVED2;
-    if (result)
-	exeterm(SAVED1->u.lis->next->u.lis);	/*	[T]	*/
-    else
-      { exeterm(SAVED1->u.lis->next->next->u.lis); /*	[R1]	*/
-	NULLARY(LIST_NEWNODE,SAVED1->u.lis);
-	NULLARY(LIST_NEWNODE,ANON_FUNCT_NEWNODE(genrecaux,NULL));
-	cons_();
-	exeterm(SAVED1->u.lis->next->next->next); } /*   [R2]	*/
-    POP(dump);
-}
-PRIVATE void genrec_()
-{
-    FOURPARAMS("genrec");
-    FOURQUOTES("genrec");
-    cons_(); cons_(); cons_();
-    genrecaux();
-}
-PRIVATE void treegenrecaux()
-{
-D(  printf("treegenrecaux: stack = "); )
-D(  writeterm(stk, stdout); printf("\n"); )
-    if (stk->next->op == LIST_)
-      { SAVESTACK;				/* begin DIP	*/
-	POP(stk);
-	exeterm(SAVED1->u.lis->next->u.lis);	/*	[O2]	*/
-	GNULLARY(SAVED1->op,SAVED1->u);
-	POP(dump);				/*   end DIP	*/
-	NULLARY(LIST_NEWNODE,ANON_FUNCT_NEWNODE(treegenrecaux,NULL));
-	cons_();
-	exeterm(stk->u.lis->u.lis->next->next); } /*	[C]	*/
-    else
-      { Node *n = stk;
-	POP(stk);
-	exeterm(n->u.lis->u.lis); }		/*	[O1]	*/
-}
-PRIVATE void treegenrec_()
-{					/* T [O1] [O2] [C]	*/
-    FOURPARAMS("treegenrec");
-    cons_(); cons_();
-D(  printf("treegenrec: stack = "); writeterm(stk, stdout); printf("\n"); )
-    treegenrecaux();
+    ec->stk = SAVED3;
+    treestepaux(ec, SAVED2);
+    POP(ec->dump);
 }
 
-PRIVATE void plain_manual_()
-{
-    make_manual(0);
+PRIVATE void treerecaux(p_EC ec) {
+  if (ec->stk->next->op == LIST_) {
+    NULLARY(LIST_NEWNODE,ANON_FUNCT_NEWNODE(treerecaux,NULL));
+    cons_(ec);		/*  D  [[[O] C] ANON_FUNCT_]	*/
+    D(printf("treerecaux: stack = "));
+    D(writeterm(ec->stk, stdout); printf("\n"));
+    exeterm(ec, ec->stk->u.lis->u.lis->next);
+  }
+  else {
+    Node *n = ec->stk;
+    POP(ec->stk);
+    exeterm(ec, n->u.lis->u.lis);
+  }
 }
-PRIVATE void html_manual_()
-{
-    make_manual(1);
+
+PRIVATE void treerec_(p_EC ec) {
+  THREEPARAMS("treerec");
+  cons_(ec);
+  D(printf("deep: stack = "); writeterm(ec->stk, stdout); printf("\n"));
+  treerecaux(ec);
 }
-PRIVATE void latex_manual_()
-{
-    make_manual(2);
+
+PRIVATE void genrecaux(p_EC ec) {
+  int result;
+  D(printf("genrecaux: stack = "));
+  D(writeterm(ec->stk, stdout); printf("\n"));
+  SAVESTACK;
+  POP(ec->stk);
+  exeterm(ec, SAVED1->u.lis->u.lis);			/*	[I]	*/
+  result = ec->stk->u.num;
+  ec->stk = SAVED2;
+  if (result)
+    exeterm(ec, SAVED1->u.lis->next->u.lis);	/*	[T]	*/
+  else {
+    exeterm(ec, SAVED1->u.lis->next->next->u.lis);	/*	[R1]	*/
+    NULLARY(LIST_NEWNODE,SAVED1->u.lis);
+    NULLARY(LIST_NEWNODE,ANON_FUNCT_NEWNODE(genrecaux,NULL));
+    cons_(ec);
+    exeterm(ec, SAVED1->u.lis->next->next->next);	/*	[R2]	*/
+  }
+  POP(ec->dump);
 }
-PRIVATE void manual_list_aux_()
-{
-    manual_list_();
+
+PRIVATE void genrec_(p_EC ec) {
+  FOURPARAMS("genrec");
+  FOURQUOTES("genrec");
+  cons_(ec);
+  cons_(ec);
+  cons_(ec);
+  genrecaux(ec);
 }
+
+PRIVATE void treegenrecaux(p_EC ec)
+{
+  D(printf("treegenrecaux: stack = "));
+  D(writeterm(ec->stk, stdout); printf("\n"));
+  if (ec->stk->next->op == LIST_) {
+    SAVESTACK;				/* begin DIP	*/
+    POP(ec->stk);
+    exeterm(ec, SAVED1->u.lis->next->u.lis);	/*	[O2]	*/
+    GNULLARY(SAVED1->op,SAVED1->u);
+    POP(ec->dump);				/*   end DIP	*/
+    NULLARY(LIST_NEWNODE,ANON_FUNCT_NEWNODE(treegenrecaux,NULL));
+    cons_(ec);
+    exeterm(ec, ec->stk->u.lis->u.lis->next->next); /*	[C]	*/
+  }
+  else {
+    Node *n = ec->stk;
+    POP(ec->stk);
+    exeterm(ec, n->u.lis->u.lis); 		/*	[O1]	*/
+  }
+}
+
+PRIVATE void treegenrec_(p_EC ec) {
+  /* T [O1] [O2] [C]	*/
+  FOURPARAMS("treegenrec");
+  cons_(ec); cons_(ec);
+  D(printf("treegenrec: stack = "); writeterm(ec->stk, stdout); printf("\n"));
+  treegenrecaux(ec);
+}
+
+
+PRIVATE void plain_manual_(p_EC ec) {
+  make_manual(ec, 0);
+}
+
+PRIVATE void html_manual_(p_EC ec) {
+  make_manual(ec, 1);
+}
+
+PRIVATE void latex_manual_(p_EC ec) {
+  make_manual(ec, 2);
+}
+
+PRIVATE void manual_list_aux_(p_EC ec) {
+  manual_list_(ec);
+}
+
 
 /* - - - - -   I N I T I A L I S A T I O N   - - - - - */
 
-static struct {char *name; void (*proc) (); char *messg1, *messg2 ; }
+static struct {char *name; void (*proc) (p_EC ec); char *messg1, *messg2 ; }
     optable[] =
 	/* THESE MUST BE DEFINED IN THE ORDER OF THEIR VALUES */
 {
@@ -3022,48 +3279,54 @@ static struct {char *name; void (*proc) (); char *messg1, *messg2 ; }
 {0, dummy_, "->","->"}
 };
 
-PUBLIC void inisymboltable(void)		/* initialise			*/
-{
-    int i; char *s;
-    symtabindex = symtab;
-    for (i = 0; i < HASHSIZE; hashentry[i++] = symtab) ;
-    localentry = symtab;
-    for (i = 0; optable[i].name; i++)
-      { s = optable[i].name;
-	/* ensure same algorithm in getsym */
-	for (hashvalue = 0; *s != '\0';) hashvalue += *s++;
-	hashvalue %= HASHSIZE;
-	symtabindex->name = optable[i].name;
-	symtabindex->u.proc = optable[i].proc;
-	symtabindex->next = hashentry[hashvalue];
-	hashentry[hashvalue] = symtabindex;
-D(	printf("entered %s in symbol table at %ld = %ld\n", \
-	    symtabindex->name, (long)symtabindex, \
-	    LOC2INT(symtabindex)); )
-	symtabindex++; }
-    firstlibra = symtabindex;
+PUBLIC void inisymboltable(p_EC ec) {		/* initialise			*/
+  int i; char *s;
+  ec->symtabindex = ec->symtab;
+  for (i = 0; i < HASHSIZE; ec->hashentry[i++] = ec->symtab)
+    ;
+  ec->localentry = ec->symtab;
+  for (i = 0; optable[i].name; i++) {
+    s = optable[i].name;
+    /* ensure same algorithm in getsym */
+    for (ec->hashvalue = 0; *s != '\0';)
+      ec->hashvalue += *s++;
+    ec->hashvalue %= HASHSIZE;
+    ec->symtabindex->name = optable[i].name;
+    ec->symtabindex->u.proc = optable[i].proc;
+    ec->symtabindex->next = ec->hashentry[ec->hashvalue];
+    ec->hashentry[ec->hashvalue] = ec->symtabindex;
+    D(printf("entered %s in symbol table at %ld = %ld\n", \
+          ec->symtabindex->name, (long)ec->symtabindex, \
+          LOC2INT(ec->symtabindex)));
+    ec->symtabindex++;
+  }
+  ec->firstlibra = ec->symtabindex;
 }
-PRIVATE void helpdetail_()
-{
-    Node *n;
-    ONEPARAM("HELP");
-    LIST("HELP");
+
+PRIVATE void helpdetail_(p_EC ec) {
+  Node *n;
+  ONEPARAM("HELP");
+  LIST("HELP");
+  printf("\n");
+  n = ec->stk->u.lis;
+  while (n != NULL) {
+    if (n->op == USR_) {
+      printf("%s  ==\n    ",n->u.ent->name);
+      writeterm(ec, n->u.ent->u.body, stdout);
+      printf("\n");
+      break;
+    }
+    else
+      printf("%s        :   %s.\n%s\n",
+          optable[ (int) n->op].name,
+          optable[ (int) n->op].messg1,
+          optable[ (int) n->op].messg2);
     printf("\n");
-    n = stk->u.lis;
-    while (n != NULL)
-      { if (n->op == USR_)
-	  { printf("%s  ==\n    ",n->u.ent->name);
-	    writeterm(n->u.ent->u.body, stdout);
-	    printf("\n"); break; }
-	else
-	    printf("%s        :   %s.\n%s\n",
-		optable[ (int) n->op].name,
-		optable[ (int) n->op].messg1,
-		optable[ (int) n->op].messg2);
-	printf("\n");
-	n = n->next; }
-    POP(stk);
+    n = n->next;
+  }
+  POP(ec->stk);
 }
+
 #define PLAIN (style == 0)
 #define HTML (style == 1)
 #define LATEX (style == 2)
@@ -3074,57 +3337,76 @@ PRIVATE void helpdetail_()
 	printf("%s",HEAD);					\
 	if (LATEX) printf("} ---] \\verb# #");				\
 	printf("\n\n"); }
-PRIVATE void make_manual(int style /* 0=plain, 1=HTML, 2=Latex */)
-{
-    int i; char * n;
-    if (HTML) printf("<HTML>\n<DL>\n");
-    for (i = BOOLEAN_; optable[i].name != 0; i++)
-      { n = optable[i].name;
-	HEADER(n," truth value type","literal") else
-	HEADER(n,"false","operand") else
-	HEADER(n,"id","operator") else
-	HEADER(n,"null","predicate") else
-	HEADER(n,"i","combinator") else
-	HEADER(n,"help","miscellaneous commands")
-	if (n[0] != '_')
-	  { if (HTML) printf("\n<DT>");
-	    else if (LATEX)
-	      { if (n[0] == ' ')
-		  { n++;  printf("\\item[\\BX{"); }
-		else printf("\\item[\\JX{"); }
-	    if (HTML && strcmp(n,"<=")==0)
-		printf("&lt;=");
-	    else printf("%s",n);
-	    if (LATEX) printf("}]  \\verb#");
-	    if (HTML) printf(" <CODE>      :  </CODE> ");
-		/* the above line does not produce the spaces around ":" */
-	    else printf("      :  ");
-	    printf("%s", optable[i].messg1);
-	    if (HTML) printf("\n<DD>");
-	    else if (LATEX) printf("# \\\\ \n {\\small\\verb#");
-		else printf("\n");
-	    printf("%s", optable[i].messg2);
-	    if (LATEX) printf("#}");
-	    printf("\n\n"); } }
-    if (HTML) printf("\n</DL>\n</HTML>\n");
+
+PRIVATE void make_manual(p_EC ec, int style /* 0=plain, 1=HTML, 2=Latex */) {
+  int i; char * n;
+  if (HTML) printf("<HTML>\n<DL>\n");
+  for (i = BOOLEAN_; optable[i].name != 0; i++) {
+    n = optable[i].name;
+    HEADER(n," truth value type","literal") else
+      HEADER(n,"false","operand") else
+      HEADER(n,"id","operator") else
+      HEADER(n,"null","predicate") else
+      HEADER(n,"i","combinator") else
+      HEADER(n,"help","miscellaneous commands")
+      if (n[0] != '_') {
+        if (HTML) printf("\n<DT>");
+        else 
+          if (LATEX) { 
+            if (n[0] == ' ') {
+              n++;
+              printf("\\item[\\BX{");
+            }
+            else printf("\\item[\\JX{");
+          }
+        if (HTML && strcmp(n,"<=")==0)
+          printf("&lt;=");
+        else
+          printf("%s",n);
+        if (LATEX)
+          printf("}]  \\verb#");
+        if (HTML)
+          printf(" <CODE>      :  </CODE> ");
+        /* the above line does not produce the spaces around ":" */
+        else
+          printf("      :  ");
+        printf("%s", optable[i].messg1);
+        if (HTML)
+          printf("\n<DD>");
+        else
+          if (LATEX)
+            printf("# \\\\ \n {\\small\\verb#");
+          else
+            printf("\n");
+        printf("%s", optable[i].messg2);
+        if (LATEX)
+          printf("#}");
+        printf("\n\n");
+      }
+  }
+  if (HTML)
+    printf("\n</DL>\n</HTML>\n");
 }
-PRIVATE void manual_list_()
-{
-    int i = -1;
-    Node *tmp;
-    Node *n = NULL;
-    while (optable[++i].name) ; /* find end */
-    --i; /* overshot */
-    while (i)
-      { tmp = STRING_NEWNODE(optable[i].messg2, NULL);
-	tmp = STRING_NEWNODE(optable[i].messg1, tmp);
-	tmp = STRING_NEWNODE(optable[i].name, tmp);
-	n   = LIST_NEWNODE(tmp, n);
-	--i; }
-    stk = LIST_NEWNODE(n,stk);
+
+PRIVATE void manual_list_(p_EC ec) {
+  int i = -1;
+  Node *tmp;
+  Node *n = NULL;
+  while (optable[++i].name)  /* find end */
+    ;
+  --i; /* overshot */
+  while (i) {
+    tmp = STRING_NEWNODE(optable[i].messg2, NULL);
+    tmp = STRING_NEWNODE(optable[i].messg1, tmp);
+    tmp = STRING_NEWNODE(optable[i].name, tmp);
+    n   = LIST_NEWNODE(tmp, n);
+    --i;
+  }
+  ec->stk = LIST_NEWNODE(n,ec->stk);
 }
-PUBLIC char *opername(int o)
-{
-    return optable[(short)o].name;
+
+PUBLIC char *opername(p_EC ec, int o) {
+  return optable[(short)o].name;
 }
+
 /* END of INTERP.C */
