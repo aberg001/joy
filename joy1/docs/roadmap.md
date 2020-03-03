@@ -3,7 +3,7 @@ Roadmap
 ===
 
 
-* [ ] Refactor to move all globals into a struct.
+* [x] Refactor to move all globals into a struct.
 * [ ] Write some documentation in Markdown.
 * [ ] Change 'include' to work with a search path JOYPATH=.:joy1/lib
 * [ ] Figure out the test suite.

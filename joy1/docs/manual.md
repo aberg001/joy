@@ -1,5 +1,5 @@
-
-literal
+# Contents
+## [literal](fx-literal.md)
 
  truth value type      :  ->  B
 The logical type, or the type of truth values.
