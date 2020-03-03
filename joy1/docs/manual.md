@@ -1,6 +1,11 @@
 # Contents
-## [literal](fx-literal.md)
-
+## [Functions](functions.md)
+### [Literals](fx-literal.md)
+### [Operand](fx-operand.md)
+### [Operator](fx-operator.md)
+### [Predicate](fx-predicate.md)
+### [Combinator](fx-combinator.md)
+### [File IO](fx-file.md)
  truth value type      :  ->  B
 The logical type, or the type of truth values.
 It has just two literals: true and false.
