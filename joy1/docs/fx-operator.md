@@ -1,282 +1,184 @@
 
 # Operator
 
-## id      :  ->
+## [File operations](fx-file.md)
+## [Math operations](fx-math.md)
+
+### id      :  ->
 Identity function, does nothing.
 Any program of the form  P id Q  is equivalent to just  P Q.
 
-## dup      :   X  ->   X X
+### dup      :   X  ->   X X
 Pushes an extra copy of X onto stack.
 
-## swap      :   X Y  ->   Y X
+### swap      :   X Y  ->   Y X
 Interchanges X and Y on top of the stack.
 
-## rollup      :  X Y Z  ->  Z X Y
+### rollup      :  X Y Z  ->  Z X Y
 Moves X and Y up, moves Z down
 
-## rolldown      :  X Y Z  ->  Y Z X
+### rolldown      :  X Y Z  ->  Y Z X
 Moves Y and Z down, moves X up
 
-## rotate      :  X Y Z  ->  Z Y X
+### rotate      :  X Y Z  ->  Z Y X
 Interchanges X and Z
 
-## popd      :  Y Z  ->  Z
+### popd      :  Y Z  ->  Z
 As if defined by:   popd  ==  [pop] dip 
 
-## dupd      :  Y Z  ->  Y Y Z
+### dupd      :  Y Z  ->  Y Y Z
 As if defined by:   dupd  ==  [dup] dip
 
-## swapd      :  X Y Z  ->  Y X Z
+### swapd      :  X Y Z  ->  Y X Z
 As if defined by:   swapd  ==  [swap] dip
 
-## rollupd      :  X Y Z W  ->  Z X Y W
+### rollupd      :  X Y Z W  ->  Z X Y W
 As if defined by:   rollupd  ==  [rollup] dip
 
-## rolldownd      :  X Y Z W  ->  Y Z X W
+### rolldownd      :  X Y Z W  ->  Y Z X W
 As if defined by:   rolldownd  ==  [rolldown] dip 
 
-## rotated      :  X Y Z W  ->  Z Y X W
+### rotated      :  X Y Z W  ->  Z Y X W
 As if defined by:   rotated  ==  [rotate] dip
 
-## pop      :   X  ->
+### pop      :   X  ->
 Removes X from top of the stack.
 
-## choice      :  B T F  ->  X
+### choice      :  B T F  ->  X
 If B is true, then X = T else X = F.
 
-## or      :  X Y  ->  Z
+### or      :  X Y  ->  Z
 Z is the union of sets X and Y, logical disjunction for truth values.
 
-## xor      :  X Y  ->  Z
+### xor      :  X Y  ->  Z
 Z is the symmetric difference of sets X and Y,
 logical exclusive disjunction for truth values.
 
-## and      :  X Y  ->  Z
+### and      :  X Y  ->  Z
 Z is the intersection of sets X and Y, logical conjunction for truth values.
 
-## not      :  X  ->  Y
+### not      :  X  ->  Y
 Y is the complement of set X, logical negation for truth values.
 
-## +      :  M I  ->  N
-Numeric N is the result of adding integer I to numeric M.
-Also supports float.
-
-## -      :  M I  ->  N
-Numeric N is the result of subtracting integer I from numeric M.
-Also supports float.
-
-## *      :  I J  ->  K
-Integer K is the product of integers I and J.  Also supports float.
-
-## /      :  I J  ->  K
-Integer K is the (rounded) ratio of integers I and J.  Also supports float.
-
-## rem      :  I J  ->  K
-Integer K is the remainder of dividing I by J.  Also supports float.
-
-## div      :  I J  ->  K L
-Integers K and L are the quotient and remainder of dividing I by J.
-
-## sign      :  N1  ->  N2
-Integer N2 is the sign (-1 or 0 or +1) of integer N1,
-or float N2 is the sign (-1.0 or 0.0 or 1.0) of float N1.
-
-## neg      :  I  ->  J
-Integer J is the negative of integer I.  Also supports float.
-
-## ord      :  C  ->  I
-Integer I is the Ascii value of character C (or logical or integer).
-
-## chr      :  I  ->  C
-C is the character whose Ascii value is integer I (or logical or character).
-
-## abs      :  N1  ->  N2
-Integer N2 is the absolute value (0,1,2..) of integer N1,
-or float N2 is the absolute value (0.0 ..) of float N1
-
-## acos      :  F  ->  G
-G is the arc cosine of F.
-
-## asin      :  F  ->  G
-G is the arc sine of F.
-
-## atan      :  F  ->  G
-G is the arc tangent of F.
-
-## atan2      :  F G  ->  H
-H is the arc tangent of F / G.
-
-## ceil      :  F  ->  G
-G is the float ceiling of F.
-
-## cos      :  F  ->  G
-G is the cosine of F.
-
-## cosh      :  F  ->  G
-G is the hyperbolic cosine of F.
-
-## exp      :  F  ->  G
-G is e (2.718281828...) raised to the Fth power.
-
-## floor      :  F  ->  G
-G is the floor of F.
-
-## frexp      :  F  ->  G I
-G is the mantissa and I is the exponent of F.
-Unless F = 0, 0.5 <= abs(G) < 1.0.
-
-## ldexp      :  F I  -> G
-G is F times 2 to the Ith power.
-
-## log      :  F  ->  G
-G is the natural logarithm of F.
-
-## log10      :  F  ->  G
-G is the common logarithm of F.
-
-## modf      :  F  ->  G H
-G is the fractional part and H is the integer part
-(but expressed as a float) of F.
-
-## pow      :  F G  ->  H
-H is F raised to the Gth power.
-
-## sin      :  F  ->  G
-G is the sine of F.
-
-## sinh      :  F  ->  G
-G is the hyperbolic sine of F.
-
-## sqrt      :  F  ->  G
-G is the square root of F.
-
-## tan      :  F  ->  G
-G is the tangent of F.
-
-## tanh      :  F  ->  G
-G is the hyperbolic tangent of F.
-
-## trunc      :  F  ->  I
+### trunc      :  F  ->  I
 I is an integer equal to the float F truncated toward zero.
 
-## localtime      :  I  ->  T
+### localtime      :  I  ->  T
 Converts a time I into a list T representing local time:
 [year month day hour minute second isdst yearday weekday].
 Month is 1 = January ... 12 = December;
 isdst is a Boolean flagging daylight savings/summer time;
 weekday is 0 = Monday ... 7 = Sunday.
 
-## gmtime      :  I  ->  T
+### gmtime      :  I  ->  T
 Converts a time I into a list T representing universal time:
 [year month day hour minute second isdst yearday weekday].
 Month is 1 = January ... 12 = December;
 isdst is false; weekday is 0 = Monday ... 7 = Sunday.
 
-## mktime      :  T  ->  I
+### mktime      :  T  ->  I
 Converts a list T representing local time into a time I.
 T is in the format generated by localtime.
 
-## strftime      :  T S1  ->  S2
+### strftime      :  T S1  ->  S2
 Formats a list T in the format of localtime or gmtime
 using string S1 and pushes the result S2.
 
-## strtol      :  S I  ->  J
+### strtol      :  S I  ->  J
 String S is converted to the integer J using base I.
 If I = 0, assumes base 10,
 but leading "0" means base 8 and leading "0x" means base 16.
 
-## strtod      :  S  ->  R
+### strtod      :  S  ->  R
 String S is converted to the float R.
 
-## format      :  N C I J  ->  S
+### format      :  N C I J  ->  S
 S is the formatted version of N in mode C
 ('d or 'i = decimal, 'o = octal, 'x or
 'X = hex with lower or upper case letters)
 with maximum width I and minimum width J.
 
-## formatf      :  F C I J  ->  S
+### formatf      :  F C I J  ->  S
 S is the formatted version of F in mode C
 ('e or 'E = exponential, 'f = fractional,
 'g or G = general with lower or upper case letters)
 with maximum width I and precision J.
 
-## srand      :  I  ->  
+### srand      :  I  ->  
 Sets the random integer seed to integer I.
 
-## pred      :  M  ->  N
+### pred      :  M  ->  N
 Numeric N is the predecessor of numeric M.
 
-## succ      :  M  ->  N
+### succ      :  M  ->  N
 Numeric N is the successor of numeric M.
 
-## max      :  N1 N2  ->  N
+### max      :  N1 N2  ->  N
 N is the maximum of numeric values N1 and N2.  Also supports float.
 
-## min      :  N1 N2  ->  N
+### min      :  N1 N2  ->  N
 N is the minimum of numeric values N1 and N2.  Also supports float.
 
-## [File operations](fx-file.md)
-
-## unstack      :  [X Y ..]  ->  ..Y X
+### unstack      :  [X Y ..]  ->  ..Y X
 The list [X Y ..] becomes the new stack.
 
-## cons      :  X A  ->  B
+### cons      :  X A  ->  B
 Aggregate B is A with a new member X (first member for sequences).
 
-## swons      :  A X  ->  B
+### swons      :  A X  ->  B
 Aggregate B is A with a new member X (first member for sequences).
 
-## first      :  A  ->  F
+### first      :  A  ->  F
 F is the first member of the non-empty aggregate A.
 
-## rest      :  A  ->  R
+### rest      :  A  ->  R
 R is the non-empty aggregate A with its first member removed.
 
-## compare      :  A B  ->  I
+### compare      :  A B  ->  I
 I (=-1,0,+1) is the comparison of aggregates A and B.
 The values correspond to the predicates <=, =, >=.
 
-## at      :  A I  ->  X
+### at      :  A I  ->  X
 X (= A[I]) is the member of A at position I.
 
-## of      :  I A  ->  X
+### of      :  I A  ->  X
 X (= A[I]) is the I-th member of aggregate A.
 
-## size      :  A  ->  I
+### size      :  A  ->  I
 Integer I is the number of elements of aggregate A.
 
-## opcase      :  X [..[X Xs]..]  ->  [Xs]
+### opcase      :  X [..[X Xs]..]  ->  [Xs]
 Indexing on type of X, returns the list [Xs].
 
-## case      :  X [..[X Y]..]  ->  Y i
+### case      :  X [..[X Y]..]  ->  Y i
 Indexing on the value of X, execute the matching Y.
 
-## uncons      :  A  ->  F R
+### uncons      :  A  ->  F R
 F and R are the first and the rest of non-empty aggregate A.
 
-## unswons      :  A  ->  R F
+### unswons      :  A  ->  R F
 R and F are the rest and the first of non-empty aggregate A.
 
-## drop      :  A N  ->  B
+### drop      :  A N  ->  B
 Aggregate B is the result of deleting the first N elements of A.
 
-## take      :  A N  ->  B
+### take      :  A N  ->  B
 Aggregate B is the result of retaining just the first N elements of A.
 
-## concat      :  S T  ->  U
+### concat      :  S T  ->  U
 Sequence U is the concatenation of sequences S and T.
 
-## enconcat      :  X S T  ->  U
+### enconcat      :  X S T  ->  U
 Sequence U is the concatenation of sequences S and T
 with X inserted between S and T (== swapd cons concat)
 
-## name      :  sym  ->  "sym"
+### name      :  sym  ->  "sym"
 For operators and combinators, the string "sym" is the name of item sym,
 for literals sym the result string is its type.
 
-## intern      :  "sym"  -> sym
+### intern      :  "sym"  -> sym
 Pushes the item whose name is "sym".
 
-## body      :  U  ->  [P]
+### body      :  U  ->  [P]
 Quotation [P] is the body of user-defined symbol U.
 
