@@ -12,8 +12,9 @@ PRIVATE void enterglobal(p_EC ec)
 {
   ec->location = ec->symtabindex++;
 D(  printf("getsym, new: '%s'\n",ec->id); )
-  ec->location->name = (char *) malloc(strlen(ec->id) + 1);
-  strcpy(ec->location->name,ec->id);
+  char *new_location = static_cast<char *>(malloc(strlen(ec->id) + 1));
+  strcpy(new_location, ec->id);
+  ec->location->name = new_location;
   ec->location->u.body = NULL; /* may be assigned in definition */
   ec->location->next = ec->hashentry[ec->hashvalue];
 D(  printf("entered %s at %ld\n",ec->id,LOC2INT(ec->location)); )
@@ -44,8 +45,9 @@ PRIVATE void enteratom(p_EC ec)
   if (ec->display_enter > 0) { 
     ec->location = ec->symtabindex++;
 D(	printf("hidden definition '%s' at %ld \n",ec->id,LOC2INT(ec->location)); )
-    ec->location->name = (char *) malloc(strlen(ec->id) + 1);
-    strcpy(ec->location->name, ec->id);
+    char *new_location = static_cast<char *>(malloc(strlen(ec->id) + 1));
+    strcpy(new_location, ec->id);
+    ec->location->name = new_location;
     ec->location->u.body = NULL; /* may be assigned later */
     ec->location->next = ec->display[ec->display_enter];
     ec->display[ec->display_enter] = ec->location; 
@@ -187,7 +189,7 @@ PUBLIC void fail_(p_EC ec)
     longjmp(ec->fail,1);
 }
 
-PUBLIC void execerror(p_EC ec, char message[], char op[])
+PUBLIC void execerror(p_EC ec, const char *message, const char *op)
 {
     printf("run time error: %s needed for %s\n",message,op);
     abortexecution_(ec);

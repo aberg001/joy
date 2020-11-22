@@ -53,7 +53,7 @@ PUBLIC int endofbuffer(p_EC ec) {
   return (ec->scanner.currentcolumn == ec->scanner.linelength);
 }
 
-PUBLIC void error(p_EC ec, char *message) {
+PUBLIC void error(p_EC ec, const char *message) {
   int i;
   putline(ec);
   if (ec->echoflag > 1) putchar('\t');
@@ -66,7 +66,7 @@ PUBLIC void error(p_EC ec, char *message) {
   ec->scanner.errorcount++;
 }
 
-PUBLIC int doinclude(p_EC ec, char *filnam) {
+PUBLIC int doinclude(p_EC ec, const char *filnam) {
   if (ec->scanner.ilevel+1 == INPSTACKMAX)
     execerror(ec, "fewer include files","include");
   if ((ec->scanner.infile[ec->scanner.ilevel+1] = fopen(filnam,"r")) != NULL) {
@@ -178,7 +178,7 @@ Start:
     case '"':
       {
         char string[INPLINEMAX];
-        register int i = 0;
+        /*register*/ int i = 0;
         getch(ec);
         while (ec->ch != '"' && !endofbuffer(ec)) {
           if (ec->ch == '\\') 

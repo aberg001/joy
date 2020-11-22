@@ -113,7 +113,7 @@ PRIVATE Node *copy(p_EC ec, p_Node n) {
 # endif
 
 # ifndef GC_BDW
-PRIVATE void gc1(p_EC ec, char *mess) {
+PRIVATE void gc1(p_EC ec, const char *mess) {
   ec->util.start_gc_clock = clock();
   if (ec->tracegc > 1)
     printf("begin %s garbage collection\n", mess);
@@ -149,7 +149,7 @@ PRIVATE void gc1(p_EC ec, char *mess) {
   COP(ec->dump5, "dump5");
 }
 
-PRIVATE void gc2(p_EC ec, char *mess) {
+PRIVATE void gc2(p_EC ec, const char *mess) {
   int this_gc_clock;
   this_gc_clock = clock() - ec->util.start_gc_clock;
   if (this_gc_clock == 0)
@@ -291,7 +291,7 @@ PUBLIC void readfactor(p_EC ec) {	/* read a JOY factor		*/
       return;
     case LBRACK:
       {
-        void readterm();
+        void readterm(p_EC);
         getsym(ec);
         readterm(ec);
         if (ec->sym != RBRACK)

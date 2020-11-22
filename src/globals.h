@@ -20,35 +20,37 @@
 #define SETSIZE		32
 #define MAXINT		2147483647
 				/* symbols from getsym		*/
-#define ILLEGAL_	 0
-#define COPIED_		 1
-#define USR_		 2
-#define ANON_FUNCT_	3
-#define BOOLEAN_	4
-#define CHAR_	5
-#define INTEGER_	6
-#define SET_	7
-#define STRING_	8
-#define LIST_	9
-#define FLOAT_	10
-#define FILE_	11
-#define LBRACK		900
-#define LBRACE		901
-#define LPAREN		902
-#define ATOM		999	/* last legal factor begin */
-#define RBRACK		1001
-#define RPAREN		1003
-#define RBRACE		1005
-#define PERIOD		1006
-#define SEMICOL		1007
-#define LIBRA		1100
-#define EQDEF		1101
-#define HIDE		1102
-#define IN		1103
-#define END		1104
-#define MODULE		1105
-#define JPRIVATE	1106
-#define JPUBLIC		1107
+typedef enum {
+  ILLEGAL_ = 0,
+  COPIED_,
+  USR_,
+  ANON_FUNCT_,
+  BOOLEAN_,
+  CHAR_,
+  INTEGER_,
+  SET_,
+  STRING_,
+  LIST_,
+  FLOAT_,
+  FILE_,
+  LBRACK = 900,
+  LBRACE,
+  LPAREN,
+  ATOM = 999,  /* last legal factor begin */
+  RBRACK = 1001,
+  RPAREN = 1003,
+  RBRACE = 1005,
+  PERIOD,
+  SEMICOL,
+  LIBRA = 1100,
+  EQDEF,
+  HIDE,
+  IN,
+  END,
+  MODULE,
+  JPRIVATE,
+  JPUBLIC,
+} Symbols;
 
 #ifdef DEBUG
 #    define D(x) x
@@ -59,39 +61,44 @@
 #define PRIVATE static
 #define PUBLIC
 
+/* Forwards */
+typedef struct ExecutionContext ExecutionContext, EC, *p_EC;
+typedef struct Node Node, *p_Node;
+typedef struct Entry Entry, *p_Entry;
+typedef union Types Types, *p_Types;
 				/* types			*/
 typedef int Symbol;
 typedef short Operator;
 
-typedef union { 
+union Types {
   long num;
   long set;
-  char *str;
+  const char *str;
   double dbl;
   FILE *fil;
-  struct Node *lis;
-  struct Entry *ent;
-  void (*proc)(); 
-} Types, *p_Types;
+  p_Node lis;
+  p_Entry ent;
+  void (*proc)(p_EC);
+};
 
-typedef struct Node {
+struct Node {
   Operator op;
   Types u;
   struct Node *next;
-} Node, *p_Node;
+};
 
-typedef struct Entry {
-  char *name;
+struct Entry {
+  const char *name;
   int is_module;
   union {
     p_Node body;
     struct Entry *module_fields;
-    void  (*proc) ();
+    void (*proc)(p_EC);
   } u;
   struct Entry *next;
-} Entry, *p_Entry;
+};
 
-typedef struct ExecutionContext { 
+struct ExecutionContext {
   FILE *srcfile;
   int g_argc;
   char **g_argv;
@@ -151,7 +158,7 @@ typedef struct ExecutionContext {
     dump, dump1, dump2, dump3, dump4, dump5;
 
   jmp_buf begin, fail;
-} ExecutionContext, *p_EC;
+};
 
 #define LOC2INT(e) (((long)e - (long)ec->symtab) / sizeof(Entry))
 #define INT2LOC(x) ((Entry*) ((x + (long)ec->symtab)) * sizeof(Entry))
@@ -179,16 +186,16 @@ PUBLIC void stack_(p_EC ec);
 PUBLIC void dummy_(p_EC ec);
 PUBLIC void exeterm(p_EC ec, Node *n);
 PUBLIC void inisymboltable(p_EC ec);	/* initialise */
-PUBLIC char *opername(p_EC ec, int o);
+PUBLIC const char *opername(p_EC ec, int o);
 PUBLIC void lookup(p_EC ec);
 PUBLIC void abortexecution_(p_EC ec);
-PUBLIC void execerror(p_EC ec, char message[], char op[]);
+PUBLIC void execerror(p_EC ec, const char *message, const char *op);
 PUBLIC void quit_(p_EC ec);
 PUBLIC void inilinebuffer(p_EC ec);
 PUBLIC void putline(p_EC ec);
 PUBLIC int endofbuffer(p_EC ec);
-PUBLIC void error(p_EC ec, char *message);
-PUBLIC int doinclude(p_EC ec, char *filnam);
+PUBLIC void error(p_EC ec, const char *message);
+PUBLIC int doinclude(p_EC ec, const char *filnam);
 PUBLIC void getsym(p_EC ec);
 PUBLIC void inimem0(p_EC ec);
 PUBLIC void inimem1(p_EC ec);

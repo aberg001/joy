@@ -1,5 +1,5 @@
 objects = main.o interp.o scan.o utils.o
-CPPFLAGS += -ferror-limit=2 -std=c++17 -frelaxed-template-template-args
+CPPFLAGS += -ferror-limit=5 -std=c++17 -frelaxed-template-template-args
 # --no-warnings  https://clang.llvm.org/docs/ClangCommandLineReference.html
 
 joy : $(objects)
