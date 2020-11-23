@@ -67,49 +67,71 @@ PRIVATE void fourquotes(pEC ec, const char *name) {
   if (ec->stk->next->next->next->op != LIST_)
     execerror(ec, "quotation as fourth parameter", name);
 }
-// #define ONEQUOTE(NAME)						\
-//     if (ec->stk->op != LIST_)					\
-// 	execerror(ec, "quotation as top parameter",NAME)
-// #define TWOQUOTES(NAME)						\
-//     ONEQUOTE(NAME);						\
-//     if (ec->stk->next->op != LIST_)					\
-// 	execerror(ec, "quotation as second parameter",NAME)
-// #define THREEQUOTES(NAME)					\
-//     TWOQUOTES(NAME);						\
-//     if (ec->stk->next->next->op != LIST_)				\
-// 	execerror(ec, "quotation as third parameter",NAME)
-// #define FOURQUOTES(NAME)					\
-//     THREEQUOTES(NAME);						\
-//     if (ec->stk->next->next->next->op != LIST_)			\
-// 	execerror(ec, "quotation as fourth parameter",NAME)
-#define SAME2TYPES(NAME)					\
-    if (ec->stk->op != ec->stk->next->op)				\
-	execerror(ec, "two parameters of the same type",NAME)
-#define STRING(NAME)						\
-    if (ec->stk->op != STRING_)					\
-	execerror(ec, "string",NAME)
-#define STRING2(NAME)						\
-    if (ec->stk->next->op != STRING_)					\
-	execerror(ec, "string as second parameter",NAME)
-#define INTEGER(NAME)						\
-    if (ec->stk->op != INTEGER_)					\
-	execerror(ec, "integer",NAME)
-#define INTEGER2(NAME)						\
-    if (ec->stk->next->op != INTEGER_)					\
-	execerror(ec, "integer as second parameter",NAME)
-#define CHARACTER(NAME)						\
-    if (ec->stk->op != CHAR_)					\
-	execerror(ec, "character",NAME)
-#define INTEGERS2(NAME)						\
-    if (ec->stk->op != INTEGER_ || ec->stk->next->op != INTEGER_)	\
-	execerror(ec, "two integers",NAME)
-#define NUMERICTYPE(NAME)					\
-    if (ec->stk->op != INTEGER_ && ec->stk->op !=  CHAR_		\
-	  && ec->stk->op != BOOLEAN_ )				\
-	execerror(ec, "numeric",NAME)
-#define NUMERIC2(NAME)						\
-    if (ec->stk->next->op != INTEGER_ && ec->stk->next->op != CHAR_)	\
-	execerror(ec, "numeric second parameter",NAME)
+PRIVATE void same2types(pEC ec, const char *name) {
+  if (ec->stk->op != ec->stk->next->op)
+    execerror(ec, "two parameters of the same type", name);
+}
+PRIVATE void string(pEC ec, const char *name) {
+  if (ec->stk->op != STRING_)
+    execerror(ec, "string", name);
+}
+PRIVATE void string2(pEC ec, const char *name) {
+  if (ec->stk->next->op != STRING_)
+    execerror(ec, "string as second parameter", name);
+}
+PRIVATE void integer(pEC ec, const char *name) {
+  if (ec->stk->op != INTEGER_)
+    execerror(ec, "integer", name);
+}
+PRIVATE void integer2(pEC ec, const char *name) {
+  if (ec->stk->next->op != INTEGER_)
+    execerror(ec, "integer as second parameter", name);
+}
+PRIVATE void character(pEC ec, const char *name) {
+  if (ec->stk->op != CHAR_)
+    execerror(ec, "character", name);
+}
+PRIVATE void integers2(pEC ec, const char *name) {
+  if (ec->stk->op != INTEGER_ || ec->stk->next->op != INTEGER_)
+    execerror(ec, "two integers", name);
+}
+PRIVATE void numerictype(pEC ec, const char *name) {
+  if (ec->stk->op != INTEGER_ && ec->stk->op !=  CHAR_
+      && ec->stk->op != BOOLEAN_)
+    execerror(ec, "numeric", name);
+}
+PRIVATE void numeric2(pEC ec, const char *name) {
+  if (ec->stk->next->op != INTEGER_ && ec->stk->next->op != CHAR_)	\
+    execerror(ec, "numeric second parameter", name);
+}
+// #define SAME2TYPES(NAME)					\
+//     if (ec->stk->op != ec->stk->next->op)				\
+// 	execerror(ec, "two parameters of the same type",NAME)
+// #define STRING(NAME)						\
+//     if (ec->stk->op != STRING_)					\
+// 	execerror(ec, "string",NAME)
+// #define STRING2(NAME)						\
+//     if (ec->stk->next->op != STRING_)					\
+// 	execerror(ec, "string as second parameter",NAME)
+// #define INTEGER(NAME)						\
+//     if (ec->stk->op != INTEGER_)					\
+// 	execerror(ec, "integer",NAME)
+// #define INTEGER2(NAME)						\
+//     if (ec->stk->next->op != INTEGER_)					\
+// 	execerror(ec, "integer as second parameter",NAME)
+// #define CHARACTER(NAME)						\
+//     if (ec->stk->op != CHAR_)					\
+// 	execerror(ec, "character",NAME)
+// #define INTEGERS2(NAME)						\
+//     if (ec->stk->op != INTEGER_ || ec->stk->next->op != INTEGER_)	\
+// 	execerror(ec, "two integers",NAME)
+// #define NUMERICTYPE(NAME)					\
+//     if (ec->stk->op != INTEGER_ && ec->stk->op !=  CHAR_		\
+// 	  && ec->stk->op != BOOLEAN_ )				\
+// 	execerror(ec, "numeric",NAME)
+// #define NUMERIC2(NAME)						\
+//     if (ec->stk->next->op != INTEGER_ && ec->stk->next->op != CHAR_)	\
+// 	execerror(ec, "numeric second parameter",NAME)
 #define FLOATABLE						\
     (ec->stk->op == INTEGER_ || ec->stk->op == FLOAT_)
 #define FLOATABLE2						\
@@ -233,7 +255,7 @@ PRIVATE void pop(pNode &N) {
 PRIVATE void pop(pEntry &N) {
   N = N->next;
 }
-// PRIVATE void nullary(pEC ec, constructor, value) {
+// PRIVATE void nullary(pEC ec, constructor, Types value) {
 //   ec->stk = constructor(ec, value, ec->stk);
 // }
 PRIVATE void gnullary(pEC ec, Operator type, Types value) {
@@ -321,7 +343,7 @@ PRIVATE void name_(pEC ec) {
 PRIVATE void intern_(pEC ec) {
   char *p;
   oneparam(ec, "intern");
-  STRING("intern");
+  string(ec, "intern");
   strcpy(ec->id, ec->stk->u.str);
   ec->hashvalue = 0;
   for (p = ec->id; *p; p++) ec->hashvalue += *p;
@@ -337,7 +359,7 @@ PRIVATE void intern_(pEC ec) {
 
 PRIVATE void getenv_(pEC ec) {
   oneparam(ec, "getenv");
-  STRING("getenv");
+  string(ec, "getenv");
   UNARY(STRING_NEWNODE, getenv(ec->stk->u.str)); 
 }
 
@@ -442,7 +464,7 @@ PRIVATE void PROCEDURE(pEC ec) {                               \
 #define ANDORXOR(PROCEDURE, NAME, OPER1, OPER2)			\
 PRIVATE void PROCEDURE(pEC ec)	{				\
     twoparams(ec, NAME);						\
-    SAME2TYPES(NAME);						\
+    same2types(ec, NAME);						\
     switch (ec->stk->next->op) {				\
         case SET_:						\
 	    BINARY(SET_NEWNODE, (long)(ec->stk->next->u.set OPER1 ec->stk->u.set));	\
@@ -462,7 +484,7 @@ ANDORXOR(xor_, "xor", ^, !=)
 #define ORDCHR(PROCEDURE, NAME, RESULTTYP)			\
 PRIVATE void PROCEDURE(pEC ec)	{				\
     oneparam(ec, NAME);						\
-    NUMERICTYPE(NAME);						\
+    numerictype(ec, NAME);						\
     UNARY(RESULTTYP, ec->stk->u.num);				\
 }
 ORDCHR(ord_, "ord", INTEGER_NEWNODE)
@@ -482,7 +504,7 @@ PRIVATE void abs_(pEC ec) {
   }
   /* end new */
   FLOAT_U(fabs);
-  INTEGER("abs");
+  integer(ec, "abs");
   if (ec->stk->u.num < 0) 
     UNARY(INTEGER_NEWNODE, - ec->stk->u.num);
 }
@@ -512,7 +534,7 @@ PRIVATE void sign_(pEC ec) {
   }
   /* end new */
   FLOAT_U(fsgn);
-  INTEGER("sign");
+  integer(ec, "sign");
   if (ec->stk->u.num < 0)
     UNARY(INTEGER_NEWNODE, -1L);
   else 
@@ -523,7 +545,7 @@ PRIVATE void sign_(pEC ec) {
 PRIVATE void neg_(pEC ec) {
   oneparam(ec, "neg");
   FLOAT_U(-);
-  INTEGER("neg");
+  integer(ec, "neg");
   UNARY(INTEGER_NEWNODE, -ec->stk->u.num);
 }
 
@@ -542,7 +564,7 @@ MULDIV(divide_, "/", /, CHECKZERO("/"))
 PRIVATE void mul_(pEC ec) {
   twoparams(ec, "*");
   FLOAT_I(*);
-  INTEGERS2("*");
+  integers2(ec, "*");
   BINARY(INTEGER_NEWNODE, ec->stk->next->u.num * ec->stk->u.num);
 }
 
@@ -552,14 +574,14 @@ PRIVATE void divide_(pEC ec) {
       (ec->stk->op == INTEGER_ && ec->stk->u.num == 0))
     execerror(ec, "non-zero divisor", "/");
   FLOAT_I(/);
-  INTEGERS2("/");
+  integers2(ec, "/");
   BINARY(INTEGER_NEWNODE, ec->stk->next->u.num / ec->stk->u.num);
 }
 
 PRIVATE void rem_(pEC ec) {
   twoparams(ec, "rem");
   FLOAT_P(fmod);
-  INTEGERS2("rem");
+  integers2(ec, "rem");
   CHECKZERO("rem");
   BINARY(INTEGER_NEWNODE, ec->stk->next->u.num % ec->stk->u.num); 
 }
@@ -567,7 +589,7 @@ PRIVATE void rem_(pEC ec) {
 PRIVATE void div_(pEC ec) {
   ldiv_t result;
   twoparams(ec, "div");
-  INTEGERS2("div");
+  integers2(ec, "div");
   CHECKZERO("div");
   result = ldiv(ec->stk->next->u.num, ec->stk->u.num);
   BINARY(INTEGER_NEWNODE, result.quot);
@@ -577,16 +599,16 @@ PRIVATE void div_(pEC ec) {
 PRIVATE void strtol_(pEC ec) {
   twoparams(ec, "strtol");
   SAVESTACK;
-  INTEGER("strtol");
+  integer(ec, "strtol");
   POP(ec->stk);
-  STRING("strtol");
+  string(ec, "strtol");
   UNARY(INTEGER_NEWNODE, strtol(SAVED2->u.str, NULL, SAVED1->u.num));
   POP(ec->dump); 
 }
 
 PRIVATE void strtod_(pEC ec) {
   oneparam(ec, "strtod");
-  STRING("strtod");
+  string(ec, "strtod");
   UNARY(FLOAT_NEWNODE, strtod(ec->stk->u.str, NULL)); 
 }
 
@@ -596,13 +618,13 @@ PRIVATE void format_(pEC ec) {
   char format[7];
   char *result;
   fourparams(ec, "format");
-  INTEGER("format");
-  INTEGER2("format");
+  integer(ec, "format");
+  integer2(ec, "format");
   prec = ec->stk->u.num;
   POP(ec->stk);
   width = ec->stk->u.num;
   POP(ec->stk);
-  CHARACTER("format");
+  character(ec, "format");
   spec = ec->stk->u.num;
   POP(ec->stk);
   if (!strchr("dioxX", spec))
@@ -610,7 +632,7 @@ PRIVATE void format_(pEC ec) {
   strcpy(format, "%*.*ld");
   format[5] = spec;
   result = static_cast<char *>(malloc(INPLINEMAX));			/* should be sufficient */
-  NUMERICTYPE("format");
+  numerictype(ec, "format");
   sprintf(result, format, width, prec, ec->stk->u.num);
   UNARY(STRING_NEWNODE, result);
   return; 
@@ -622,13 +644,13 @@ PRIVATE void formatf_(pEC ec) {
   char format[7];
   char *result;
   fourparams(ec, "format");
-  INTEGER("format");
-  INTEGER2("format");
+  integer(ec, "format");
+  integer2(ec, "format");
   prec = ec->stk->u.num;
   POP(ec->stk);
   width = ec->stk->u.num;
   POP(ec->stk);
-  CHARACTER("format");
+  character(ec, "format");
   spec = ec->stk->u.num;
   POP(ec->stk);
   if (!strchr("eEfgG", spec))
@@ -651,7 +673,7 @@ PRIVATE void PROCEDURE(pEC ec) {				\
     long wday;							\
     time_t timval;						\
     oneparam(ec, NAME);						\
-    INTEGER(NAME);						\
+    integer(ec, NAME);						\
     timval = ec->stk->u.num;					\
     t = FUNC(&timval);						\
     wday = t->tm_wday;						\
@@ -735,7 +757,7 @@ PRIVATE void strftime_(pEC ec) {
   char *result;
   size_t length;
   twoparams(ec, "strftime");
-  STRING("strftime");
+  string(ec, "strftime");
   fmt = ec->stk->u.str;
   POP(ec->stk);
   LIST("strftime");
@@ -801,7 +823,7 @@ PRIVATE void modf_(pEC ec) {
 PRIVATE void ldexp_(pEC ec) {
   long exp;
   twoparams(ec, "ldexp");
-  INTEGER("ldexp");
+  integer(ec, "ldexp");
   exp = ec->stk->u.num;
   POP(ec->stk);
   FLOAT("ldexp");
@@ -820,7 +842,7 @@ PRIVATE void trunc_(pEC ec) {
 #define PREDSUCC(PROCEDURE, NAME, OPER)				\
 PRIVATE void PROCEDURE(pEC ec)	{				\
     oneparam(ec, NAME);						\
-    NUMERICTYPE(NAME);						\
+    numerictype(ec, NAME);						\
     if (ec->stk->op == CHAR_)					\
 	UNARY(CHAR_NEWNODE, ec->stk->u.num OPER 1);			\
     else UNARY(INTEGER_NEWNODE, ec->stk->u.num OPER 1); }
@@ -831,8 +853,8 @@ PREDSUCC(succ_, "succ", +)
 PRIVATE void PROCEDURE(pEC ec)	{				\
     twoparams(ec, NAME);						\
     FLOAT_I(OPER);						\
-    INTEGER(NAME);						\
-    NUMERIC2(NAME);						\
+    integer(ec, NAME);						\
+    numeric2(ec, NAME);						\
     if (ec->stk->next->op == CHAR_)					\
 	BINARY(CHAR_NEWNODE, ec->stk->next->u.num OPER ec->stk->u.num);	\
     else BINARY(INTEGER_NEWNODE, ec->stk->next->u.num OPER ec->stk->u.num); }
@@ -847,8 +869,8 @@ PRIVATE void PROCEDURE(pEC ec)	{				\
 	    FLOATVAL OPER FLOATVAL2 ?				\
 	    FLOATVAL2 : FLOATVAL);				\
 	return; } 						\
-    SAME2TYPES(NAME);						\
-    NUMERICTYPE(NAME);						\
+    same2types(ec, NAME);						\
+    numerictype(ec, NAME);						\
     if (ec->stk->op == CHAR_)					\
 	BINARY(CHAR_NEWNODE,					\
 	    ec->stk->u.num OPER ec->stk->next->u.num ?			\
@@ -908,8 +930,8 @@ COMPREL(compare_, "compare", INTEGER_NEWNODE, +)
 
 PRIVATE void fopen_(pEC ec) {
   twoparams(ec, "fopen");
-  STRING("fopen");
-  STRING2("fopen");
+  string(ec, "fopen");
+  string2(ec, "fopen");
   BINARY(FILE_NEWNODE, fopen(ec->stk->next->u.str, ec->stk->u.str));
   return; 
 }
@@ -935,15 +957,15 @@ PRIVATE void fflush_(pEC ec) {
 
 PRIVATE void fremove_(pEC ec) {
   oneparam(ec, "fremove");
-  STRING("fremove");
+  string(ec, "fremove");
   UNARY(BOOLEAN_NEWNODE, (long)!remove(ec->stk->u.str));
   return; 
 }
 
 PRIVATE void frename_(pEC ec) {
   twoparams(ec, "frename");
-  STRING("frename");
-  STRING2("frename");
+  string(ec, "frename");
+  string2(ec, "frename");
   BINARY(BOOLEAN_NEWNODE, (long)!rename(ec->stk->next->u.str, ec->stk->u.str));
   return; 
 }
@@ -992,7 +1014,7 @@ PRIVATE void fput_(pEC ec) {
 PRIVATE void fputch_(pEC ec) {
   int ch;
   twoparams(ec, "fputch");
-  INTEGER("fputch");
+  integer(ec, "fputch");
   ch = ec->stk->u.num;
   POP(ec->stk);
   FILE("fputch");
@@ -1015,7 +1037,7 @@ PRIVATE void fread_(pEC ec) {
   unsigned char *buf;
   long count;
   twoparams(ec, "fread");
-  INTEGER("fread");
+  integer(ec, "fread");
   count = ec->stk->u.num;
   POP(ec->stk);
   FILE("fread");
@@ -1051,8 +1073,8 @@ PRIVATE void fseek_(pEC ec) {
   long pos;
   int whence;
   threeparams(ec, "fseek");
-  INTEGER("fseek");
-  INTEGER2("fseek");
+  integer(ec, "fseek");
+  integer2(ec, "fseek");
   whence = ec->stk->u.num;
   POP(ec->stk);
   pos = ec->stk->u.num;
@@ -1460,7 +1482,7 @@ PRIVATE void take_(pEC ec) {
 
 PRIVATE void concat_(pEC ec) {
   twoparams(ec, "concat");
-  SAME2TYPES("concat");
+  same2types(ec, "concat");
   switch (ec->stk->op) {
     case SET_:
       BINARY(SET_NEWNODE,ec->stk->next->u.set | ec->stk->u.set);
@@ -1510,7 +1532,7 @@ PRIVATE void concat_(pEC ec) {
 
 PRIVATE void enconcat_(pEC ec) {
   threeparams(ec, "enconcat");
-  SAME2TYPES("enconcat");
+  same2types(ec, "enconcat");
   swapd_(ec); cons_(ec); concat_(ec);
 }
 
@@ -1633,20 +1655,65 @@ PRIVATE void put_(pEC ec) {
     printf(" ");
   });
 }
+PRIVATE void putch_(pEC ec) {
+  usetop(ec, "putch", &numerictype, [](pEC ec)->void {
+    printf("%c", static_cast<char>(ec->stk->u.num));
+  });
+}
+PRIVATE void putchars_(pEC ec) {
+  usetop(ec, "putchars", &string, [](pEC ec)->void {
+    printf("%s", ec->stk->u.str);
+  });
+}
+PRIVATE void setecho_(pEC ec) {
+  usetop(ec, "setecho", &numerictype, [](pEC ec)->void {
+    ec->echoflag = ec->stk->u.num;
+  });
+}
+PRIVATE void setautoput_(pEC ec) {
+  usetop(ec, "setautoput", &numerictype, [](pEC ec)->void {
+    ec->autoput = ec->stk->u.num;
+  });
+}
+PRIVATE void setundeferror_(pEC ec) {
+  usetop(ec, "setundeferror", &numerictype, [](pEC ec)->void {
+    ec->undeferror = ec->stk->u.num;
+  });
+}
+PRIVATE void settracegc_(pEC ec) {
+  usetop(ec, "settracegc", &numerictype, [](pEC ec)->void {
+    ec->tracegc = ec->stk->u.num;
+  });
+}
+PRIVATE void srand_(pEC ec) {
+  usetop(ec, "srand", &integer, [](pEC ec)->void {
+    srand(static_cast<unsigned int>(ec->stk->u.num));
+  });
+}
+PRIVATE void include_(pEC ec) {
+  usetop(ec, "include", &string, [](pEC ec)->void {
+    doinclude(ec, ec->stk->u.str);
+  });
+}
+PRIVATE void system_(pEC ec) {
+  usetop(ec, "system", &string, [](pEC ec)->void {
+    system(ec->stk->u.str);
+  });
+}
 
 #define USETOP(PROCEDURE,NAME,TYPE,BODY)			\
     PRIVATE void PROCEDURE(pEC ec) {					\
       oneparam(ec, NAME); TYPE(NAME); BODY; POP(ec->stk); }
 // USETOP( put_,"put",ONEPARAM, writefactor(ec, ec->stk, stdout); printf(" "))
-USETOP( putch_,"putch",NUMERICTYPE, printf("%c", (char) ec->stk->u.num) )
-USETOP( putchars_,"putchars",STRING, printf("%s", ec->stk->u.str) )
-USETOP( setecho_,"setecho",NUMERICTYPE, ec->echoflag = ec->stk->u.num )
-USETOP( setautoput_,"setautoput",NUMERICTYPE, ec->autoput = ec->stk->u.num )
-USETOP( setundeferror_, "setundeferror", NUMERICTYPE, ec->undeferror = ec->stk->u.num )
-USETOP( settracegc_,"settracegc",NUMERICTYPE, ec->tracegc = ec->stk->u.num )
-USETOP( srand_,"srand",INTEGER, srand((unsigned int) ec->stk->u.num) )
-USETOP( include_,"include",STRING, doinclude(ec, ec->stk->u.str) )
-USETOP( system_,"system",STRING, system(ec->stk->u.str) )
+// USETOP( putch_,"putch",NUMERICTYPE, printf("%c", (char) ec->stk->u.num) )
+// USETOP( putchars_,"putchars",STRING, printf("%s", ec->stk->u.str) )
+// USETOP( setecho_,"setecho",NUMERICTYPE, ec->echoflag = ec->stk->u.num )
+// USETOP( setautoput_,"setautoput",NUMERICTYPE, ec->autoput = ec->stk->u.num )
+// USETOP( setundeferror_, "setundeferror", NUMERICTYPE, ec->undeferror = ec->stk->u.num )
+// USETOP( settracegc_,"settracegc",NUMERICTYPE, ec->tracegc = ec->stk->u.num )
+// USETOP( srand_,"srand",INTEGER, srand((unsigned int) ec->stk->u.num) )
+// USETOP( include_,"include",STRING, doinclude(ec, ec->stk->u.str) )
+// USETOP( system_,"system",STRING, system(ec->stk->u.str) )
 
 PRIVATE void undefs_(pEC ec) {
   Entry *i = ec->symtabindex;
@@ -1831,7 +1898,7 @@ PRIVATE void times_(pEC ec) {
   int i,n;
   twoparams(ec, "times");
   onequote(ec, "times");
-  INTEGER2("times");
+  integer2(ec, "times");
   SAVESTACK;
   ec->stk = ec->stk->next->next;
   n = SAVED2->u.num;
