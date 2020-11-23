@@ -113,6 +113,23 @@ PRIVATE Node *copy(p_EC ec, p_Node n) {
 # endif
 
 # ifndef GC_BDW
+
+PRIVATE void cop(p_EC ec, p_Node *pos, const char *name) {
+  if (*pos != NULL) {
+    if (ec->tracegc > 2) {
+      printf("old %s = ", name);
+      writeterm(ec, *pos, stdout);
+      printf("\n");
+    }
+    *pos = copy(ec, *pos);
+    if (ec->tracegc > 2) {
+      printf("new %s = ", name);
+      writeterm(ec, *pos, stdout);
+      printf("\n");
+    }
+  }
+}
+
 PRIVATE void gc1(p_EC ec, const char *mess) {
   ec->util.start_gc_clock = clock();
   if (ec->tracegc > 1)
@@ -128,25 +145,25 @@ PRIVATE void gc1(p_EC ec, const char *mess) {
      */
  ec->util.nodesinspected = ec->util.nodescopied = 0;
 
-#define COP(X, NAME)						\
-  if (X != NULL) {						\
-    if (ec->tracegc > 2)					\
-    { printf("old %s = ", NAME);				\
-      writeterm(ec, X, stdout); printf("\n"); }			\
-    X = copy(ec, X);						\
-    if (ec->tracegc > 2)					\
-    { printf("new %s = ", NAME);				\
-      writeterm(ec, X, stdout); printf("\n"); } }
+// #define COP(X, NAME)						\
+//   if (X != NULL) {						\
+//     if (ec->tracegc > 2)					\
+//     { printf("old %s = ", NAME);				\
+//       writeterm(ec, X, stdout); printf("\n"); }			\
+//     X = copy(ec, X);						\
+//     if (ec->tracegc > 2)					\
+//     { printf("new %s = ", NAME);				\
+//       writeterm(ec, X, stdout); printf("\n"); } }
 
-  COP(ec->stk, "stk");
-  COP(ec->prog, "prog");
-  COP(ec->conts, "conts");
-  COP(ec->dump, "dump");
-  COP(ec->dump1, "dump1");
-  COP(ec->dump2, "dump2");
-  COP(ec->dump3, "dump3");
-  COP(ec->dump4, "dump4");
-  COP(ec->dump5, "dump5");
+  cop(ec, &(ec->stk), "stk");
+  cop(ec, &(ec->prog), "prog");
+  cop(ec, &(ec->conts), "conts");
+  cop(ec, &(ec->dump), "dump");
+  cop(ec, &(ec->dump1), "dump1");
+  cop(ec, &(ec->dump2), "dump2");
+  cop(ec, &(ec->dump3), "dump3");
+  cop(ec, &(ec->dump4), "dump4");
+  cop(ec, &(ec->dump5), "dump5");
 }
 
 PRIVATE void gc2(p_EC ec, const char *mess) {
@@ -392,7 +409,7 @@ PUBLIC void writefactor(p_EC ec, Node *n, FILE *stm) {
   }
 }
 
-PUBLIC void writeterm(p_EC ec, Node *n, FILE *stm) {
+PUBLIC void writeterm(p_EC ec, p_Node n, FILE *stm) {
   while (n != NULL) {
     writefactor(ec, n, stm);
     n = n->next;

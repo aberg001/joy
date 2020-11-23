@@ -21,9 +21,13 @@ PRIVATE void make_manual(p_EC ec, int style /* 0=plain, 1=html, 2=latex */);
 PRIVATE void manual_list_(p_EC ec);
 PRIVATE void manual_list_aux_(p_EC ec);
 
-#define ONEPARAM(NAME)						\
-    if (ec->stk == NULL)						\
-	execerror(ec, "one parameter",NAME)
+PRIVATE void oneparam(p_EC ec, const char *name) {
+  if (ec->stk == NULL)
+    execerror(ec, "one parameter", name);
+}
+// #define ONEPARAM(NAME)						\
+//     if (ec->stk == NULL)						\
+// 	execerror(ec, "one parameter",NAME)
 #define TWOPARAMS(NAME)						\
     if (ec->stk == NULL || ec->stk->next == NULL)			\
 	execerror(ec, "two parameters",NAME)
@@ -42,6 +46,11 @@ PRIVATE void manual_list_aux_(p_EC ec);
 	    || ec->stk->next->next->next == NULL			\
 	    || ec->stk->next->next->next->next == NULL)		\
 	execerror(ec, "four parameters",NAME)
+
+PRIVATE void onequote(p_EC ec, const char *name) {
+  if (ec->stk->op != LIST_)
+    execerror(ec, "quotation as top parameter", name);
+}
 #define ONEQUOTE(NAME)						\
     if (ec->stk->op != LIST_)					\
 	execerror(ec, "quotation as top parameter",NAME)		
@@ -145,6 +154,49 @@ PRIVATE void manual_list_aux_(p_EC ec);
 #define BADDATA(NAME)						\
     execerror(ec, "different type",NAME)
 
+PRIVATE p_Node dmp(p_EC ec) {
+  return ec->dump->u.lis;
+}
+PRIVATE p_Node dmp1(p_EC ec) {
+  return ec->dump1->u.lis;
+}
+PRIVATE p_Node dmp2(p_EC ec) {
+  return ec->dump2->u.lis;
+}
+PRIVATE p_Node dmp3(p_EC ec) {
+  return ec->dump3->u.lis;
+}
+PRIVATE p_Node dmp4(p_EC ec) {
+  return ec->dump4->u.lis;
+}
+PRIVATE p_Node dmp5(p_EC ec) {
+  return ec->dump5->u.lis;
+}
+
+PRIVATE p_Node savestack(p_EC ec) {
+  p_Node dump = LIST_NEWNODE(ec->stk, ec->dump);
+  ec->dump = dump;
+  return ec->dump;
+}
+PRIVATE p_Node saved1(p_EC ec) {
+  return dmp(ec);
+}
+PRIVATE p_Node saved2(p_EC ec) {
+  return dmp(ec)->next;
+}
+PRIVATE p_Node saved3(p_EC ec) {
+  return dmp(ec)->next->next;
+}
+PRIVATE p_Node saved4(p_EC ec) {
+  return dmp(ec)->next->next->next;
+}
+PRIVATE p_Node saved5(p_EC ec) {
+  return dmp(ec)->next->next->next->next;
+}
+PRIVATE p_Node saved6(p_EC ec) {
+  return dmp(ec)->next->next->next->next->next;
+}
+
 #define DMP ec->dump->u.lis
 #define DMP1 ec->dump1->u.lis
 #define DMP2 ec->dump2->u.lis
@@ -158,6 +210,13 @@ PRIVATE void manual_list_aux_(p_EC ec);
 #define SAVED4 DMP->next->next->next
 #define SAVED5 DMP->next->next->next->next
 #define SAVED6 DMP->next->next->next->next->next
+
+PRIVATE void pop(p_Node &N) {
+  N = N->next;
+}
+PRIVATE void pop(p_Entry &N) {
+  N = N->next;
+}
 
 #define POP(X) X = X->next
 
@@ -219,7 +278,7 @@ PRIVATE void id_(p_EC ec) {
     /* do nothing */
 }
 PRIVATE void unstack_(p_EC ec) {
-    ONEPARAM("unstack");
+    oneparam(ec, "unstack");
     LIST("unstack");
     ec->stk = ec->stk->u.lis;
 }
@@ -232,14 +291,14 @@ PRIVATE void newstack_(p_EC ec) {
 /* - - -   STACK   - - - */
 
 PRIVATE void name_(p_EC ec) {
-  ONEPARAM("name");
+  oneparam(ec, "name");
   UNARY(STRING_NEWNODE, 
       ec->stk->op == USR_ ? ec->stk->u.ent->name : opername(ec, ec->stk->op));
 }
 
 PRIVATE void intern_(p_EC ec) {
   char *p;
-  ONEPARAM("intern");
+  oneparam(ec, "intern");
   STRING("intern");
   strcpy(ec->id, ec->stk->u.str);
   ec->hashvalue = 0;
@@ -255,19 +314,19 @@ PRIVATE void intern_(p_EC ec) {
 }
 
 PRIVATE void getenv_(p_EC ec) {
-  ONEPARAM("getenv");
+  oneparam(ec, "getenv");
   STRING("getenv");
   UNARY(STRING_NEWNODE, getenv(ec->stk->u.str)); 
 }
 
 PRIVATE void body_(p_EC ec) {
-  ONEPARAM("body");
+  oneparam(ec, "body");
   USERDEF("body");
   UNARY(LIST_NEWNODE, ec->stk->u.ent->u.body);
 }
 
 PRIVATE void pop_(p_EC ec) {
-  ONEPARAM("pop");
+  oneparam(ec, "pop");
   POP(ec->stk);
 }
 
@@ -307,7 +366,7 @@ PRIVATE void rotate_(p_EC ec) {
 }
 
 PRIVATE void dup_(p_EC ec) {
-  ONEPARAM("dup");
+  oneparam(ec, "dup");
   GNULLARY(ec->stk->op, ec->stk->u);
 }
 
@@ -351,7 +410,7 @@ ANDORXOR(xor_, "xor", ^, !=)
 
 #define ORDCHR(PROCEDURE, NAME, RESULTTYP)			\
 PRIVATE void PROCEDURE(p_EC ec)	{				\
-    ONEPARAM(NAME);						\
+    oneparam(ec, NAME);						\
     NUMERICTYPE(NAME);						\
     UNARY(RESULTTYP, ec->stk->u.num);				\
 }
@@ -359,7 +418,7 @@ ORDCHR(ord_, "ord", INTEGER_NEWNODE)
 ORDCHR(chr_, "chr", CHAR_NEWNODE)
 
 PRIVATE void abs_(p_EC ec) {
-  ONEPARAM("abs");
+  oneparam(ec, "abs");
   /* start new */
   FLOAT("abs");
   if (ec->stk->op == INTEGER_) { 
@@ -388,7 +447,7 @@ PRIVATE double fsgn(double f) {
 }
 
 PRIVATE void sign_(p_EC ec) {
-  ONEPARAM("sign");
+  oneparam(ec, "sign");
   /* start new */
   FLOAT("sign");
   if (ec->stk->op == INTEGER_) { 
@@ -411,7 +470,7 @@ PRIVATE void sign_(p_EC ec) {
 }
 
 PRIVATE void neg_(p_EC ec) {
-  ONEPARAM("neg");
+  oneparam(ec, "neg");
   FLOAT_U(-);
   INTEGER("neg");
   UNARY(INTEGER_NEWNODE, -ec->stk->u.num);
@@ -475,7 +534,7 @@ PRIVATE void strtol_(p_EC ec) {
 }
 
 PRIVATE void strtod_(p_EC ec) {
-  ONEPARAM("strtod");
+  oneparam(ec, "strtod");
   STRING("strtod");
   UNARY(FLOAT_NEWNODE, strtod(ec->stk->u.str, NULL)); 
 }
@@ -540,7 +599,7 @@ PRIVATE void PROCEDURE(p_EC ec) {				\
     struct tm *t;						\
     long wday;							\
     time_t timval;						\
-    ONEPARAM(NAME);						\
+    oneparam(ec, NAME);						\
     INTEGER(NAME);						\
     timval = ec->stk->u.num;					\
     t = FUNC(&timval);						\
@@ -612,7 +671,7 @@ PRIVATE void decode_time(p_EC ec, struct tm *t) {
 
 PRIVATE void mktime_(p_EC ec) {
   struct tm t;
-  ONEPARAM("mktime");
+  oneparam(ec, "mktime");
   LIST("mktime");
   decode_time(ec, &t);
   UNARY(INTEGER_NEWNODE, (long)mktime(&t));
@@ -641,7 +700,7 @@ PRIVATE void strftime_(p_EC ec) {
 
 #define UFLOAT(PROCEDURE, NAME, FUNC)				\
 PRIVATE void PROCEDURE(p_EC ec)	{				\
-    ONEPARAM(NAME);						\
+    oneparam(ec, NAME);						\
     FLOAT(NAME);						\
     UNARY(FLOAT_NEWNODE, FUNC(FLOATVAL));				\
     return; }
@@ -672,7 +731,7 @@ BFLOAT(pow_, "pow", pow)
 
 PRIVATE void frexp_(p_EC ec) {
   int exp;
-  ONEPARAM("frexp");
+  oneparam(ec, "frexp");
   FLOAT("frexp");
   UNARY(FLOAT_NEWNODE, frexp(FLOATVAL, &exp));
   NULLARY(INTEGER_NEWNODE, (long)exp);
@@ -681,7 +740,7 @@ PRIVATE void frexp_(p_EC ec) {
 
 PRIVATE void modf_(p_EC ec) {
   double exp;
-  ONEPARAM("frexp");
+  oneparam(ec, "frexp");
   FLOAT("frexp");
   UNARY(FLOAT_NEWNODE, modf(FLOATVAL, &exp));
   NULLARY(FLOAT_NEWNODE, exp);
@@ -700,7 +759,7 @@ PRIVATE void ldexp_(p_EC ec) {
 }
 
 PRIVATE void trunc_(p_EC ec) {
-  ONEPARAM("trunc");
+  oneparam(ec, "trunc");
   FLOAT("trunc");
   UNARY(INTEGER_NEWNODE, (long)FLOATVAL);
 }
@@ -709,7 +768,7 @@ PRIVATE void trunc_(p_EC ec) {
 
 #define PREDSUCC(PROCEDURE, NAME, OPER)				\
 PRIVATE void PROCEDURE(p_EC ec)	{				\
-    ONEPARAM(NAME);						\
+    oneparam(ec, NAME);						\
     NUMERICTYPE(NAME);						\
     if (ec->stk->op == CHAR_)					\
 	UNARY(CHAR_NEWNODE, ec->stk->u.num OPER 1);			\
@@ -805,7 +864,7 @@ PRIVATE void fopen_(p_EC ec) {
 }
 
 PRIVATE void fclose_(p_EC ec) {
-  ONEPARAM("fclose");
+  oneparam(ec, "fclose");
   if (ec->stk->op == FILE_ && ec->stk->u.fil == NULL) { 
     POP(ec->stk);
     return; 
@@ -817,14 +876,14 @@ PRIVATE void fclose_(p_EC ec) {
 }
 
 PRIVATE void fflush_(p_EC ec) {
-  ONEPARAM("fflush");
+  oneparam(ec, "fflush");
   FILE("fflush");
   fflush(ec->stk->u.fil);
   return; 
 }
 
 PRIVATE void fremove_(p_EC ec) {
-  ONEPARAM("fremove");
+  oneparam(ec, "fremove");
   STRING("fremove");
   UNARY(BOOLEAN_NEWNODE, (long)!remove(ec->stk->u.str));
   return; 
@@ -840,7 +899,7 @@ PRIVATE void frename_(p_EC ec) {
 
 #define FILEGET(PROCEDURE,NAME,CONSTRUCTOR,EXPR)			\
 PRIVATE void PROCEDURE(p_EC ec)	{				\
-    ONEPARAM(NAME);						\
+    oneparam(ec, NAME);						\
     FILE(NAME);							\
     NULLARY(CONSTRUCTOR,EXPR);						\
     return; }
@@ -853,7 +912,7 @@ PRIVATE void fgets_(p_EC ec) {
   int length = 0;
   int size = INPLINEMAX;
   char *buff = NULL;
-  ONEPARAM("fgets");
+  oneparam(ec, "fgets");
   FILE("fgets");
   for (;;) { 
     buff = static_cast<char *>(realloc(buff, size));
@@ -956,7 +1015,7 @@ PRIVATE void fseek_(p_EC ec) {
 /* - - -   AGGREGATES   - - - */
 
 PRIVATE void first_(p_EC ec) {
-  ONEPARAM("first");
+  oneparam(ec, "first");
   switch (ec->stk->op) {
     case LIST_:
       CHECKEMPTYLIST(ec->stk->u.lis,"first");
@@ -980,7 +1039,7 @@ PRIVATE void first_(p_EC ec) {
 }
 
 PRIVATE void rest_(p_EC ec) {
-  ONEPARAM("rest");
+  oneparam(ec, "rest");
   switch (ec->stk->op) {
     case SET_:
       { 
@@ -1007,7 +1066,7 @@ PRIVATE void rest_(p_EC ec) {
 }
 
 PRIVATE void uncons_(p_EC ec) {
-  ONEPARAM("uncons");
+  oneparam(ec, "uncons");
   switch (ec->stk->op) {
     case SET_:
       {
@@ -1039,7 +1098,7 @@ PRIVATE void uncons_(p_EC ec) {
 }
 
 PRIVATE void unswons_(p_EC ec) {
-  ONEPARAM("unswons");
+  oneparam(ec, "unswons");
   switch (ec->stk->op)
   { 
     case SET_:
@@ -1202,7 +1261,7 @@ PRIVATE void case_(p_EC ec) {
 
 PRIVATE void opcase_(p_EC ec) {
   Node *n;
-  ONEPARAM("opcase");
+  oneparam(ec, "opcase");
   LIST("opcase");
   n = ec->stk->u.lis;
   CHECKEMPTYLIST(n,"opcase");
@@ -1405,7 +1464,7 @@ PRIVATE void enconcat_(p_EC ec) {
 }
 
 PRIVATE void null_(p_EC ec) {
-  ONEPARAM("null");
+  oneparam(ec, "null");
   switch (ec->stk->op) {
     case STRING_:
       UNARY(BOOLEAN_NEWNODE, (long)(*(ec->stk->u.str) == '\0'));
@@ -1422,7 +1481,7 @@ PRIVATE void null_(p_EC ec) {
 }
 
 PRIVATE void not_(p_EC ec) {
-  ONEPARAM("not");
+  oneparam(ec, "not");
   switch (ec->stk->op) {
     case SET_:
       UNARY(SET_NEWNODE, ~ ec->stk->u.set);
@@ -1440,7 +1499,7 @@ PRIVATE void not_(p_EC ec) {
 
 PRIVATE void size_(p_EC ec) {
   long siz = 0;
-  ONEPARAM("size");
+  oneparam(ec, "size");
   switch (ec->stk->op) {
     case SET_:
       {
@@ -1468,7 +1527,7 @@ PRIVATE void size_(p_EC ec) {
 
 PRIVATE void small_(p_EC ec) {
   long sml = 0;
-  ONEPARAM("small");
+  oneparam(ec, "small");
   switch (ec->stk->op) {
     case BOOLEAN_: case INTEGER_:
       sml = ec->stk->u.num < 2;
@@ -1497,7 +1556,7 @@ PRIVATE void small_(p_EC ec) {
 
 #define TYPE(PROCEDURE,NAME,REL,TYP)				\
     PRIVATE void PROCEDURE(p_EC ec) {					\
-        ONEPARAM(NAME);						\
+        oneparam(ec, NAME);						\
 	UNARY(BOOLEAN_NEWNODE,(long)(ec->stk->op REL TYP)); }
 TYPE(integer_,"integer",==,INTEGER_)
 TYPE(char_,"char",==,CHAR_)
@@ -1510,10 +1569,24 @@ TYPE(float_,"float",==,FLOAT_)
 TYPE(file_,"file",==,FILE_)
 TYPE(user_,"user",==,USR_)
 
+PRIVATE void usetop(p_EC ec, const char *name, void(*type)(p_EC, const char*), void(*body)(p_EC)) {
+  oneparam(ec, name);
+  type(ec, name);
+  body(ec);
+  POP(ec->stk);
+}
+
+PRIVATE void put_(p_EC ec) {
+  usetop(ec, "put", &oneparam, [](p_EC ec)->void {
+    writefactor(ec, ec->stk, stdout);
+    printf(" ");
+  });
+}
+
 #define USETOP(PROCEDURE,NAME,TYPE,BODY)			\
     PRIVATE void PROCEDURE(p_EC ec) {					\
-      ONEPARAM(NAME); TYPE(NAME); BODY; POP(ec->stk); }
-USETOP( put_,"put",ONEPARAM, writefactor(ec, ec->stk, stdout); printf(" "))
+      oneparam(ec, NAME); TYPE(NAME); BODY; POP(ec->stk); }
+// USETOP( put_,"put",ONEPARAM, writefactor(ec, ec->stk, stdout); printf(" "))
 USETOP( putch_,"putch",NUMERICTYPE, printf("%c", (char) ec->stk->u.num) )
 USETOP( putchars_,"putchars",STRING, printf("%s", ec->stk->u.str) )
 USETOP( setecho_,"setecho",NUMERICTYPE, ec->echoflag = ec->stk->u.num )
@@ -1627,13 +1700,13 @@ start:
 }
 
 PRIVATE void x_(p_EC ec) {
-    ONEPARAM("x");
+    oneparam(ec, "x");
     ONEQUOTE("x");
     exeterm(ec, ec->stk->u.lis);
 }
 
 PRIVATE void i_(p_EC ec) {
-    ONEPARAM("i");
+    oneparam(ec, "i");
     ONEQUOTE("i");
     SAVESTACK;
     POP(ec->stk);
@@ -1651,6 +1724,22 @@ PRIVATE void dip_(p_EC ec) {
     POP(ec->dump);
 }
 
+PRIVATE void n_ary(p_EC ec, const char *name, void (*paramcount)(p_EC, const char*), p_Node (*top)(p_EC)) {
+    paramcount(ec, name);
+    onequote(ec, name);
+    savestack(ec);
+    pop(ec->stk);
+    exeterm(ec, SAVED1->u.lis);
+    if (ec->stk == NULL)
+      execerror(ec, "value to push", name);
+    ec->stk = newnode(ec, ec->stk->op, ec->stk->u, top(ec));
+    pop(ec->dump);
+}
+
+PRIVATE void nullary_(p_EC ec) {
+  n_ary(ec, "nullary", &oneparam, &saved2);
+}
+
 #define N_ARY(PROCEDURE,NAME,PARAMCOUNT,TOP)			\
 PRIVATE void PROCEDURE(p_EC ec)	{				\
     PARAMCOUNT(NAME);						\
@@ -1662,7 +1751,7 @@ PRIVATE void PROCEDURE(p_EC ec)	{				\
     ec->stk = newnode(ec, ec->stk->op, ec->stk->u,TOP);				\
     POP(ec->dump);							\
 }
-N_ARY(nullary_,"nullary",ONEPARAM,SAVED2)
+// N_ARY(nullary_,"nullary",ONEPARAM,SAVED2)
 N_ARY(unary_,"unary",TWOPARAMS,SAVED3)
 N_ARY(binary_,"binary",THREEPARAMS,SAVED4)
 N_ARY(ternary_,"ternary",FOURPARAMS,SAVED5)
@@ -1918,7 +2007,7 @@ PRIVATE void fold_(p_EC ec) {
 
 PRIVATE void cond_(p_EC ec) {
   int result = 0;
-  ONEPARAM("cond");
+  oneparam(ec, "cond");
   /* must check for QUOTES in list */
   LIST("cond");
   CHECKEMPTYLIST(ec->stk->u.lis,"cond");
@@ -2347,7 +2436,7 @@ PRIVATE void condlinrecaux(p_EC ec)
 }
 
 PRIVATE void condlinrec_(p_EC ec) {
-  ONEPARAM("condlinrec");
+  oneparam(ec, "condlinrec");
   LIST("condlinrec");
   CHECKEMPTYLIST(ec->stk->u.lis,"condlinrec");
   SAVESTACK;
@@ -2400,7 +2489,7 @@ PRIVATE void condnestrecaux(p_EC ec) {
 }
 
 PRIVATE void condnestrec_(p_EC ec) {
-  ONEPARAM("condnestrec");
+  oneparam(ec, "condnestrec");
   LIST("condnestrec");
   CHECKEMPTYLIST(ec->stk->u.lis,"condnestrec");
   SAVESTACK;
@@ -3315,7 +3404,7 @@ PUBLIC void inisymboltable(p_EC ec) {		/* initialise			*/
 
 PRIVATE void helpdetail_(p_EC ec) {
   Node *n;
-  ONEPARAM("HELP");
+  oneparam(ec, "HELP");
   LIST("HELP");
   printf("\n");
   n = ec->stk->u.lis;

@@ -66,6 +66,7 @@ typedef struct ExecutionContext ExecutionContext, EC, *p_EC;
 typedef struct Node Node, *p_Node;
 typedef struct Entry Entry, *p_Entry;
 typedef union Types Types, *p_Types;
+typedef void (*Proc)(p_EC);
 				/* types			*/
 typedef int Symbol;
 typedef short Operator;
@@ -93,7 +94,7 @@ struct Entry {
   union {
     p_Node body;
     struct Entry *module_fields;
-    void (*proc)(p_EC);
+    Proc proc;
   } u;
   struct Entry *next;
 };
@@ -184,7 +185,7 @@ struct ExecutionContext {
 /* Public procedures: */
 PUBLIC void stack_(p_EC ec);
 PUBLIC void dummy_(p_EC ec);
-PUBLIC void exeterm(p_EC ec, Node *n);
+PUBLIC void exeterm(p_EC ec, p_Node n);
 PUBLIC void inisymboltable(p_EC ec);	/* initialise */
 PUBLIC const char *opername(p_EC ec, int o);
 PUBLIC void lookup(p_EC ec);
@@ -200,14 +201,14 @@ PUBLIC void getsym(p_EC ec);
 PUBLIC void inimem0(p_EC ec);
 PUBLIC void inimem1(p_EC ec);
 PUBLIC void inimem2(p_EC ec);
-PUBLIC void printnode(p_EC ec, Node *p);
+PUBLIC void printnode(p_EC ec, p_Node p);
 PUBLIC void gc_(p_EC ec);
-PUBLIC Node *newnode(p_EC ec, Operator o, Types u, Node *r);
+PUBLIC p_Node newnode(p_EC ec, Operator o, Types u, p_Node r);
 PUBLIC void memoryindex_(p_EC ec);
 PUBLIC void readfactor(p_EC ec);	/* read a JOY factor */
 PUBLIC void readterm(p_EC ec);
-PUBLIC void writefactor(p_EC ec, Node *n, FILE *stm);
-PUBLIC void writeterm(p_EC ec, Node *n, FILE *stm);
+PUBLIC void writefactor(p_EC ec, p_Node n, FILE *stm);
+PUBLIC void writeterm(p_EC ec, p_Node n, FILE *stm);
 
 #define USR_NEWNODE(u,r)	(ec->bucket.ent = u, newnode(ec, USR_, ec->bucket, r))
 #define ANON_FUNCT_NEWNODE(u,r)	(ec->bucket.proc = u, newnode(ec, ANON_FUNCT_, ec->bucket, r))
