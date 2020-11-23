@@ -11,13 +11,13 @@
 #define MEM_HIGH (MEMORYMAX-1)
 # endif
 
-PUBLIC void inimem0(p_EC ec) {
+PUBLIC void inimem0(pEC ec) {
   ec->util.memoryindex = ec->util.memory;
   ec->util.mem_low = ec->util.memory;
   ec->util.direction = +1;
 }
 
-PUBLIC void inimem1(p_EC ec) {
+PUBLIC void inimem1(pEC ec) {
   ec->stk = ec->conts = ec->dump = ec->dump1 = ec->dump2 = ec->dump3 = ec->dump4 = ec->dump5 = NULL;
 # ifndef GC_BDW
   ec->util.direction = +1;
@@ -25,7 +25,7 @@ PUBLIC void inimem1(p_EC ec) {
 # endif
 }
 
-PUBLIC void inimem2(p_EC ec) {
+PUBLIC void inimem2(pEC ec) {
 # ifndef GC_BDW
   ec->util.mem_low = ec->util.memoryindex;
   ec->util.mem_mid = ec->util.mem_low + (MEM_HIGH)/2;
@@ -44,7 +44,7 @@ PUBLIC void inimem2(p_EC ec) {
 # endif
 }
 
-PUBLIC void printnode(p_EC ec, p_Node p) {
+PUBLIC void printnode(pEC ec, pNode p) {
 # ifndef GC_BDW
   printf("%10ld:        %-10s %10ld %10ld\n",
       MEM2INT(p),
@@ -55,7 +55,7 @@ PUBLIC void printnode(p_EC ec, p_Node p) {
 }
 
 # ifndef GC_BDW
-PRIVATE Node *copy(p_EC ec, p_Node n) {
+PRIVATE Node *copy(pEC ec, pNode n) {
     Node *temp;
     ec->util.nodesinspected++;
     if (ec->tracegc > 4)
@@ -114,7 +114,7 @@ PRIVATE Node *copy(p_EC ec, p_Node n) {
 
 # ifndef GC_BDW
 
-PRIVATE void cop(p_EC ec, p_Node *pos, const char *name) {
+PRIVATE void cop(pEC ec, pNode *pos, const char *name) {
   if (*pos != NULL) {
     if (ec->tracegc > 2) {
       printf("old %s = ", name);
@@ -130,7 +130,7 @@ PRIVATE void cop(p_EC ec, p_Node *pos, const char *name) {
   }
 }
 
-PRIVATE void gc1(p_EC ec, const char *mess) {
+PRIVATE void gc1(pEC ec, const char *mess) {
   ec->util.start_gc_clock = clock();
   if (ec->tracegc > 1)
     printf("begin %s garbage collection\n", mess);
@@ -166,7 +166,7 @@ PRIVATE void gc1(p_EC ec, const char *mess) {
   cop(ec, &(ec->dump5), "dump5");
 }
 
-PRIVATE void gc2(p_EC ec, const char *mess) {
+PRIVATE void gc2(pEC ec, const char *mess) {
   int this_gc_clock;
   this_gc_clock = clock() - ec->util.start_gc_clock;
   if (this_gc_clock == 0)
@@ -180,7 +180,7 @@ PRIVATE void gc2(p_EC ec, const char *mess) {
 }
 # endif
 
-PUBLIC void gc_(p_EC ec) {
+PUBLIC void gc_(pEC ec) {
 # ifndef GC_BDW
   gc1(ec, "user requested");
   gc2(ec, "user requested");
@@ -189,7 +189,7 @@ PUBLIC void gc_(p_EC ec) {
 # endif
 }
 
-PUBLIC Node *newnode(p_EC ec, Operator o, Types u, Node *r) {
+PUBLIC Node *newnode(pEC ec, Operator o, Types u, Node *r) {
   Node *p;
 # ifndef GC_BDW
   if (ec->util.memoryindex == ec->util.mem_mid) {
@@ -211,7 +211,7 @@ PUBLIC Node *newnode(p_EC ec, Operator o, Types u, Node *r) {
   return p;
 }
 
-PUBLIC void memoryindex_(p_EC ec) {
+PUBLIC void memoryindex_(pEC ec) {
 # ifndef GC_BDW
   ec->stk = INTEGER_NEWNODE((long)MEM2INT(ec->util.memoryindex), ec->stk);
 # else
@@ -219,7 +219,7 @@ PUBLIC void memoryindex_(p_EC ec) {
 # endif
 }
 
-PRIVATE void readmodule_field(p_EC ec) {
+PRIVATE void readmodule_field(pEC ec) {
   Entry *p;
   D(printf("Module %s at %d\n", ec->location->name, (long)ec->location));
   D(p = ec->location->u.module_fields);
@@ -244,7 +244,7 @@ PRIVATE void readmodule_field(p_EC ec) {
   return;
 }
 
-PUBLIC void readfactor(p_EC ec) {	/* read a JOY factor		*/
+PUBLIC void readfactor(pEC ec) {	/* read a JOY factor		*/
   switch (ec->sym) {
     case ATOM:
       lookup(ec);
@@ -308,7 +308,7 @@ PUBLIC void readfactor(p_EC ec) {	/* read a JOY factor		*/
       return;
     case LBRACK:
       {
-        void readterm(p_EC);
+        void readterm(pEC);
         getsym(ec);
         readterm(ec);
         if (ec->sym != RBRACK)
@@ -325,7 +325,7 @@ PUBLIC void readfactor(p_EC ec) {	/* read a JOY factor		*/
   }
 }
 
-PUBLIC void readterm(p_EC ec) {
+PUBLIC void readterm(pEC ec) {
   ec->stk = LIST_NEWNODE(0L, ec->stk);
   if (ec->sym <= ATOM) {
     readfactor(ec);
@@ -347,7 +347,7 @@ PUBLIC void readterm(p_EC ec) {
   }
 }
 
-PUBLIC void writefactor(p_EC ec, Node *n, FILE *stm) {
+PUBLIC void writefactor(pEC ec, Node *n, FILE *stm) {
   if (n == NULL)
     execerror(ec, "non-empty stack","print");
   switch (n->op) {
@@ -409,7 +409,7 @@ PUBLIC void writefactor(p_EC ec, Node *n, FILE *stm) {
   }
 }
 
-PUBLIC void writeterm(p_EC ec, p_Node n, FILE *stm) {
+PUBLIC void writeterm(pEC ec, pNode n, FILE *stm) {
   while (n != NULL) {
     writefactor(ec, n, stm);
     n = n->next;

@@ -8,7 +8,7 @@
 #define ALLOC
 #include "globals.h"
 
-PRIVATE void enterglobal(p_EC ec)
+PRIVATE void enterglobal(pEC ec)
 {
   ec->location = ec->symtabindex++;
 D(  printf("getsym, new: '%s'\n",ec->id); )
@@ -20,7 +20,7 @@ D(  printf("getsym, new: '%s'\n",ec->id); )
 D(  printf("entered %s at %ld\n",ec->id,LOC2INT(ec->location)); )
   ec->hashentry[ec->hashvalue] = ec->location;
 }
-PUBLIC void lookup(p_EC ec)
+PUBLIC void lookup(pEC ec)
 {
   int i;
 D(  printf("%s  hashes to %d\n",ec->id,ec->hashvalue); )
@@ -40,7 +40,7 @@ D(  printf("%s  hashes to %d\n",ec->id,ec->hashvalue); )
     enterglobal(ec);
 }
 
-PRIVATE void enteratom(p_EC ec)
+PRIVATE void enteratom(pEC ec)
 {
   if (ec->display_enter > 0) { 
     ec->location = ec->symtabindex++;
@@ -56,10 +56,10 @@ D(	printf("hidden definition '%s' at %ld \n",ec->id,LOC2INT(ec->location)); )
     lookup(ec);
 }
 
-PRIVATE void defsequence(p_EC);		/* forward */
-PRIVATE void compound_def(p_EC);		/* forward */
+PRIVATE void defsequence(pEC);		/* forward */
+PRIVATE void compound_def(pEC);		/* forward */
 
-PRIVATE void definition(p_EC ec)
+PRIVATE void definition(pEC ec)
 {
   Entry *here = NULL;
   if (ec->sym == LIBRA || ec->sym == JPRIVATE || ec->sym == HIDE || ec->sym == MODULE) { 
@@ -101,7 +101,7 @@ D(  printf("\n"); )
   ec->stk = ec->stk->next;
 }
 
-PRIVATE void defsequence(p_EC ec)
+PRIVATE void defsequence(pEC ec)
 {
   definition(ec);
   while (ec->sym == SEMICOL) {
@@ -110,7 +110,7 @@ PRIVATE void defsequence(p_EC ec)
   }
 }
 
-PRIVATE void compound_def(p_EC ec)
+PRIVATE void compound_def(pEC ec)
 {
   switch (ec->sym) { 
     case MODULE : 
@@ -178,18 +178,18 @@ PRIVATE void compound_def(p_EC ec)
   }
 }
 
-PUBLIC void abortexecution_(p_EC ec)
+PUBLIC void abortexecution_(pEC ec)
 {
     ec->conts = ec->dump = ec->dump1 = ec->dump2 = ec->dump3 = ec->dump4 = ec->dump5 = NULL;
     longjmp(ec->begin,0);
 }
 
-PUBLIC void fail_(p_EC ec)
+PUBLIC void fail_(pEC ec)
 {
     longjmp(ec->fail,1);
 }
 
-PUBLIC void execerror(p_EC ec, const char *message, const char *op)
+PUBLIC void execerror(pEC ec, const char *message, const char *op)
 {
     printf("run time error: %s needed for %s\n",message,op);
     abortexecution_(ec);
@@ -197,7 +197,7 @@ PUBLIC void execerror(p_EC ec, const char *message, const char *op)
 
 static int quit_quiet = 1;
    /* was = 0;  but anything with "clock" needs revision */
-PUBLIC void quit_(p_EC ec)
+PUBLIC void quit_(pEC ec)
 {
     long totaltime;
     if (quit_quiet) exit(0);
@@ -222,7 +222,7 @@ int main(int argc, char **argv)
 {
   int ch;
   ExecutionContext _ec;
-  p_EC ec = &_ec;
+  pEC ec = &_ec;
 
   inimem0(ec);
   ec->g_argc = argc;

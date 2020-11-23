@@ -12,18 +12,18 @@
 
 #define EOLN '\n'
 
-PUBLIC void inilinebuffer(p_EC ec) {
+PUBLIC void inilinebuffer(pEC ec) {
   ec->scanner.ilevel = 0;
   ec->scanner.infile[ec->scanner.ilevel] = ec->srcfile;
 }
 
-PUBLIC void putline(p_EC ec) {
+PUBLIC void putline(pEC ec) {
   if (ec->echoflag > 2) printf("%4d", ec->scanner.linenumber);
   if (ec->echoflag > 1) printf("\t");
   printf("%s\n", ec->scanner.linbuf);
 }
 
-PRIVATE void getch(p_EC ec) {
+PRIVATE void getch(pEC ec) {
   char c;
   if (ec->scanner.currentcolumn == ec->scanner.linelength) {
 Again:
@@ -49,11 +49,11 @@ Again:
   ec->ch = ec->scanner.linbuf[ec->scanner.currentcolumn++];
 }
 
-PUBLIC int endofbuffer(p_EC ec) {
+PUBLIC int endofbuffer(pEC ec) {
   return (ec->scanner.currentcolumn == ec->scanner.linelength);
 }
 
-PUBLIC void error(p_EC ec, const char *message) {
+PUBLIC void error(pEC ec, const char *message) {
   int i;
   putline(ec);
   if (ec->echoflag > 1) putchar('\t');
@@ -66,7 +66,7 @@ PUBLIC void error(p_EC ec, const char *message) {
   ec->scanner.errorcount++;
 }
 
-PUBLIC int doinclude(p_EC ec, const char *filnam) {
+PUBLIC int doinclude(pEC ec, const char *filnam) {
   if (ec->scanner.ilevel+1 == INPSTACKMAX)
     execerror(ec, "fewer include files","include");
   if ((ec->scanner.infile[ec->scanner.ilevel+1] = fopen(filnam,"r")) != NULL) {
@@ -77,7 +77,7 @@ PUBLIC int doinclude(p_EC ec, const char *filnam) {
   return 0;
 }
 
-PRIVATE char specialchar(p_EC ec) {
+PRIVATE char specialchar(pEC ec) {
   getch(ec);
   switch (ec->ch) {
     case 'n' :
@@ -114,7 +114,7 @@ PRIVATE char specialchar(p_EC ec) {
   }
 }
 
-PUBLIC void getsym(p_EC ec) {
+PUBLIC void getsym(pEC ec) {
 Start:
   while (ec->ch <= ' ') getch(ec);
   switch (ec->ch) {

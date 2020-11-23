@@ -62,11 +62,11 @@ typedef enum {
 #define PUBLIC
 
 /* Forwards */
-typedef struct ExecutionContext ExecutionContext, EC, *p_EC;
-typedef struct Node Node, *p_Node;
-typedef struct Entry Entry, *p_Entry;
-typedef union Types Types, *p_Types;
-typedef void (*Proc)(p_EC);
+typedef struct ExecutionContext ExecutionContext, EC, *pEC;
+typedef struct Node Node, *pNode;
+typedef struct Entry Entry, *pEntry;
+typedef union Types Types, *pTypes;
+typedef void (*Proc)(pEC);
 				/* types			*/
 typedef int Symbol;
 typedef short Operator;
@@ -77,9 +77,9 @@ union Types {
   const char *str;
   double dbl;
   FILE *fil;
-  p_Node lis;
-  p_Entry ent;
-  void (*proc)(p_EC);
+  pNode lis;
+  pEntry ent;
+  void (*proc)(pEC);
 };
 
 struct Node {
@@ -92,7 +92,7 @@ struct Entry {
   const char *name;
   int is_module;
   union {
-    p_Node body;
+    pNode body;
     struct Entry *module_fields;
     Proc proc;
   } u;
@@ -130,7 +130,7 @@ struct ExecutionContext {
   struct Util {
 # ifndef GC_BDW
     Node memory[MEMORYMAX];
-    p_Node memoryindex,
+    pNode memoryindex,
       mem_low,
       mem_mid;
     int direction;
@@ -142,7 +142,7 @@ struct ExecutionContext {
 
   Entry					/* symbol table	*/
     symtab[SYMTABMAX];
-  p_Entry
+  pEntry
     hashentry[HASHSIZE],
     localentry,
     symtabindex,
@@ -150,7 +150,7 @@ struct ExecutionContext {
     firstlibra,				/* inioptable	*/
     location;				/* getsym	*/
 
-  p_Node				/* dynamic memory	*/
+  pNode				/* dynamic memory	*/
   /*
       memory[MEMORYMAX],
       *memoryindex,
@@ -183,32 +183,32 @@ struct ExecutionContext {
 */
 
 /* Public procedures: */
-PUBLIC void stack_(p_EC ec);
-PUBLIC void dummy_(p_EC ec);
-PUBLIC void exeterm(p_EC ec, p_Node n);
-PUBLIC void inisymboltable(p_EC ec);	/* initialise */
-PUBLIC const char *opername(p_EC ec, int o);
-PUBLIC void lookup(p_EC ec);
-PUBLIC void abortexecution_(p_EC ec);
-PUBLIC void execerror(p_EC ec, const char *message, const char *op);
-PUBLIC void quit_(p_EC ec);
-PUBLIC void inilinebuffer(p_EC ec);
-PUBLIC void putline(p_EC ec);
-PUBLIC int endofbuffer(p_EC ec);
-PUBLIC void error(p_EC ec, const char *message);
-PUBLIC int doinclude(p_EC ec, const char *filnam);
-PUBLIC void getsym(p_EC ec);
-PUBLIC void inimem0(p_EC ec);
-PUBLIC void inimem1(p_EC ec);
-PUBLIC void inimem2(p_EC ec);
-PUBLIC void printnode(p_EC ec, p_Node p);
-PUBLIC void gc_(p_EC ec);
-PUBLIC p_Node newnode(p_EC ec, Operator o, Types u, p_Node r);
-PUBLIC void memoryindex_(p_EC ec);
-PUBLIC void readfactor(p_EC ec);	/* read a JOY factor */
-PUBLIC void readterm(p_EC ec);
-PUBLIC void writefactor(p_EC ec, p_Node n, FILE *stm);
-PUBLIC void writeterm(p_EC ec, p_Node n, FILE *stm);
+PUBLIC void stack_(pEC ec);
+PUBLIC void dummy_(pEC ec);
+PUBLIC void exeterm(pEC ec, pNode n);
+PUBLIC void inisymboltable(pEC ec);	/* initialise */
+PUBLIC const char *opername(pEC ec, int o);
+PUBLIC void lookup(pEC ec);
+PUBLIC void abortexecution_(pEC ec);
+PUBLIC void execerror(pEC ec, const char *message, const char *op);
+PUBLIC void quit_(pEC ec);
+PUBLIC void inilinebuffer(pEC ec);
+PUBLIC void putline(pEC ec);
+PUBLIC int endofbuffer(pEC ec);
+PUBLIC void error(pEC ec, const char *message);
+PUBLIC int doinclude(pEC ec, const char *filnam);
+PUBLIC void getsym(pEC ec);
+PUBLIC void inimem0(pEC ec);
+PUBLIC void inimem1(pEC ec);
+PUBLIC void inimem2(pEC ec);
+PUBLIC void printnode(pEC ec, pNode p);
+PUBLIC void gc_(pEC ec);
+PUBLIC pNode newnode(pEC ec, Operator o, Types u, pNode r);
+PUBLIC void memoryindex_(pEC ec);
+PUBLIC void readfactor(pEC ec);	/* read a JOY factor */
+PUBLIC void readterm(pEC ec);
+PUBLIC void writefactor(pEC ec, pNode n, FILE *stm);
+PUBLIC void writeterm(pEC ec, pNode n, FILE *stm);
 
 #define USR_NEWNODE(u,r)	(ec->bucket.ent = u, newnode(ec, USR_, ec->bucket, r))
 #define ANON_FUNCT_NEWNODE(u,r)	(ec->bucket.proc = u, newnode(ec, ANON_FUNCT_, ec->bucket, r))
