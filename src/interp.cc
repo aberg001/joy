@@ -52,21 +52,36 @@ PRIVATE void onequote(pEC ec, const char *name) {
   if (ec->stk->op != LIST_)
     execerror(ec, "quotation as top parameter", name);
 }
-#define ONEQUOTE(NAME)						\
-    if (ec->stk->op != LIST_)					\
-	execerror(ec, "quotation as top parameter",NAME)		
-#define TWOQUOTES(NAME)						\
-    ONEQUOTE(NAME);						\
-    if (ec->stk->next->op != LIST_)					\
-	execerror(ec, "quotation as second parameter",NAME)
-#define THREEQUOTES(NAME)					\
-    TWOQUOTES(NAME);						\
-    if (ec->stk->next->next->op != LIST_)				\
-	execerror(ec, "quotation as third parameter",NAME)
-#define FOURQUOTES(NAME)					\
-    THREEQUOTES(NAME);						\
-    if (ec->stk->next->next->next->op != LIST_)			\
-	execerror(ec, "quotation as fourth parameter",NAME)
+PRIVATE void twoquotes(pEC ec, const char *name) {
+  onequote(ec, name);
+  if (ec->stk->next->op != LIST_)
+    execerror(ec, "quotation as second parameter", name);
+}
+PRIVATE void threequotes(pEC ec, const char *name) {
+  twoquotes(ec, name);
+  if (ec->stk->next->next->op != LIST_)
+    execerror(ec, "quotation as third parameter", name);
+}
+PRIVATE void fourquotes(pEC ec, const char *name) {
+  threequotes(ec, name);
+  if (ec->stk->next->next->next->op != LIST_)
+    execerror(ec, "quotation as fourth parameter", name);
+}
+// #define ONEQUOTE(NAME)						\
+//     if (ec->stk->op != LIST_)					\
+// 	execerror(ec, "quotation as top parameter",NAME)
+// #define TWOQUOTES(NAME)						\
+//     ONEQUOTE(NAME);						\
+//     if (ec->stk->next->op != LIST_)					\
+// 	execerror(ec, "quotation as second parameter",NAME)
+// #define THREEQUOTES(NAME)					\
+//     TWOQUOTES(NAME);						\
+//     if (ec->stk->next->next->op != LIST_)				\
+// 	execerror(ec, "quotation as third parameter",NAME)
+// #define FOURQUOTES(NAME)					\
+//     THREEQUOTES(NAME);						\
+//     if (ec->stk->next->next->next->op != LIST_)			\
+// 	execerror(ec, "quotation as fourth parameter",NAME)
 #define SAME2TYPES(NAME)					\
     if (ec->stk->op != ec->stk->next->op)				\
 	execerror(ec, "two parameters of the same type",NAME)
@@ -1737,13 +1752,13 @@ start:
 
 PRIVATE void x_(pEC ec) {
     oneparam(ec, "x");
-    ONEQUOTE("x");
+    onequote(ec, "x");
     exeterm(ec, ec->stk->u.lis);
 }
 
 PRIVATE void i_(pEC ec) {
     oneparam(ec, "i");
-    ONEQUOTE("i");
+    onequote(ec, "i");
     SAVESTACK;
     POP(ec->stk);
     exeterm(ec, SAVED1->u.lis);
@@ -1752,7 +1767,7 @@ PRIVATE void i_(pEC ec) {
 
 PRIVATE void dip_(pEC ec) {
     twoparams(ec, "dip");
-    ONEQUOTE("dip");
+    onequote(ec, "dip");
     SAVESTACK;
     ec->stk = ec->stk->next->next;
     exeterm(ec, SAVED1->u.lis);
@@ -1815,7 +1830,7 @@ PRIVATE void nullary_(pEC ec) {
 PRIVATE void times_(pEC ec) {
   int i,n;
   twoparams(ec, "times");
-  ONEQUOTE("times");
+  onequote(ec, "times");
   INTEGER2("times");
   SAVESTACK;
   ec->stk = ec->stk->next->next;
@@ -1827,7 +1842,7 @@ PRIVATE void times_(pEC ec) {
 
 PRIVATE void infra_(pEC ec) {
   twoparams(ec, "infra");
-  ONEQUOTE("infra");
+  onequote(ec, "infra");
   LIST2("infra");
   SAVESTACK;
   ec->stk = SAVED2->u.lis;
@@ -1838,7 +1853,7 @@ PRIVATE void infra_(pEC ec) {
 
 PRIVATE void app1_(pEC ec) {
   twoparams(ec, "app1");
-  ONEQUOTE("app1");
+  onequote(ec, "app1");
   SAVESTACK;
   POP(ec->stk);
   exeterm(ec, SAVED1->u.lis);
@@ -1848,7 +1863,7 @@ PRIVATE void app1_(pEC ec) {
 PRIVATE void cleave_(pEC ec) {
   /*  X [P1] [P2] cleave ==>  X1 X2	*/
   threeparams(ec, "cleave");
-  TWOQUOTES("cleave");
+  twoquotes(ec, "cleave");
   SAVESTACK;
   ec->stk = SAVED3;
   exeterm(ec, SAVED2->u.lis);			/* [P1]		*/
@@ -1862,7 +1877,7 @@ PRIVATE void cleave_(pEC ec) {
 
 PRIVATE void app11_(pEC ec) {
   threeparams(ec, "app11");
-  ONEQUOTE("app11");
+  onequote(ec, "app11");
   app1_(ec);
   ec->stk->next = ec->stk->next->next;
 }
@@ -1870,7 +1885,7 @@ PRIVATE void app11_(pEC ec) {
 PRIVATE void unary2_(pEC ec) {
   /*   Y  Z  [P]  unary2     ==>  Y'  Z'  */
   threeparams(ec, "unary2");
-  ONEQUOTE("unary2");
+  onequote(ec, "unary2");
   SAVESTACK;
   ec->stk = SAVED2->next;				/* just Y on top */
   exeterm(ec, SAVED1->u.lis);			/* execute P */
@@ -1887,7 +1902,7 @@ PRIVATE void unary2_(pEC ec) {
 PRIVATE void unary3_(pEC ec) {
   /*  X Y Z [P]  unary3    ==>  X' Y' Z'	*/
   fourparams(ec, "unary3");
-  ONEQUOTE("unary3");
+  onequote(ec, "unary3");
   SAVESTACK;
   ec->stk = SAVED3->next;				/* just X on top */
   exeterm(ec, SAVED1->u.lis);			/* execute P */
@@ -1909,7 +1924,7 @@ PRIVATE void unary3_(pEC ec) {
 PRIVATE void unary4_(pEC ec) {
   /*  X Y Z W [P]  unary4    ==>  X' Y' Z' W'	*/
   fiveparams(ec, "unary4");
-  ONEQUOTE("unary4");
+  onequote(ec, "unary4");
   SAVESTACK;
   ec->stk = SAVED4->next;				/* just X on top */
   exeterm(ec, SAVED1->u.lis);			/* execute P */
@@ -1941,7 +1956,7 @@ PRIVATE void app12_(pEC ec) {
 
 PRIVATE void map_(pEC ec) {
   twoparams(ec, "map");
-  ONEQUOTE("map");
+  onequote(ec, "map");
   SAVESTACK;
   switch(SAVED2->op) {
     case LIST_:
@@ -2004,7 +2019,7 @@ PRIVATE void map_(pEC ec) {
 
 PRIVATE void step_(pEC ec) {
   twoparams(ec, "step");
-  ONEQUOTE("step");
+  onequote(ec, "step");
   SAVESTACK;
   ec->stk = ec->stk->next->next;
   switch(SAVED2->op) {
@@ -2079,7 +2094,7 @@ PRIVATE void cond_(pEC ec) {
 #define IF_TYPE(PROCEDURE,NAME,TYP)				\
     PRIVATE void PROCEDURE(pEC ec)					\
     {   twoparams(ec, NAME);					\
-	TWOQUOTES(NAME);					\
+	twoquotes(ec, NAME);					\
         SAVESTACK;						\
 	ec->stk = SAVED3;						\
 	exeterm(ec, ec->stk->op == TYP ? SAVED2->u.lis : SAVED1->u.lis);\
@@ -2095,7 +2110,7 @@ IF_TYPE(iflist_,"iflist",LIST_)
 
 PRIVATE void filter_(pEC ec) {
   twoparams(ec, "filter");
-  ONEQUOTE("filter");
+  onequote(ec, "filter");
   SAVESTACK;
   switch (SAVED2->op) {
     case SET_ :
@@ -2265,7 +2280,7 @@ PRIVATE void split_(pEC ec) {
 PRIVATE void PROCEDURE(pEC ec)	{				\
     long result = INITIAL;					\
     twoparams(ec, NAME);						\
-    ONEQUOTE(NAME);						\
+    onequote(ec, NAME);						\
     SAVESTACK;							\
     switch (SAVED2->op)						\
       { case SET_ :						\
@@ -2385,7 +2400,7 @@ PRIVATE void tailrec_(pEC ec) {
 PRIVATE void construct_(pEC ec) {
   /* [P] [[P1] [P2] ..] -> X1 X2 ..	*/
   twoparams(ec, "construct");
-  TWOQUOTES("construct");
+  twoquotes(ec, "construct");
   SAVESTACK;
   ec->stk = SAVED3;			/* pop progs		*/
   ec->dump1 = LIST_NEWNODE(ec->dump2, ec->dump1);	/* save dump2		*/
@@ -2409,7 +2424,7 @@ PRIVATE void construct_(pEC ec) {
 
 PRIVATE void branch_(pEC ec) {
   threeparams(ec, "branch");
-  TWOQUOTES("branch");
+  twoquotes(ec, "branch");
   SAVESTACK;
   ec->stk = SAVED4;
   exeterm(ec, SAVED3->u.num ? SAVED2->u.lis : SAVED1->u.lis);
@@ -2419,7 +2434,7 @@ PRIVATE void branch_(pEC ec) {
 PRIVATE void while_(pEC ec)
 {
   twoparams(ec, "while");
-  TWOQUOTES("while");
+  twoquotes(ec, "while");
   SAVESTACK;
   do {
     ec->stk = SAVED3;
@@ -2439,7 +2454,7 @@ PRIVATE void while_(pEC ec)
 PRIVATE void ifte_(pEC ec) {
   int result;
   threeparams(ec, "ifte");
-  THREEQUOTES("ifte");
+  threequotes(ec, "ifte");
   SAVESTACK;
   ec->stk = SAVED4;
   exeterm(ec, SAVED3->u.lis);
@@ -2560,7 +2575,7 @@ PRIVATE void linrecaux(pEC ec) {
 
 PRIVATE void linrec_(pEC ec) {
   fourparams(ec, "linrec");
-  FOURQUOTES("linrec");
+  fourquotes(ec, "linrec");
   SAVESTACK;
   ec->stk = SAVED5;
   linrecaux(ec);
@@ -2592,7 +2607,7 @@ PRIVATE void binrecaux(pEC ec) {
 PRIVATE void binrec_(pEC ec)
 {
     fourparams(ec, "binrec");
-    FOURQUOTES("binrec");
+    fourquotes(ec, "binrec");
     SAVESTACK;
     ec->stk = SAVED5;
     binrecaux(ec);
@@ -2616,7 +2631,7 @@ PRIVATE void treestepaux(pEC ec, pNode item) {
 
 PRIVATE void treestep_(pEC ec) {
     twoparams(ec, "treestep");
-    ONEQUOTE("treestep");
+    onequote(ec, "treestep");
     SAVESTACK;
     ec->stk = SAVED3;
     treestepaux(ec, SAVED2);
@@ -2668,7 +2683,7 @@ PRIVATE void genrecaux(pEC ec) {
 
 PRIVATE void genrec_(pEC ec) {
   fourparams(ec, "genrec");
-  FOURQUOTES("genrec");
+  fourquotes(ec, "genrec");
   cons_(ec);
   cons_(ec);
   cons_(ec);
