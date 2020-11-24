@@ -145,7 +145,7 @@ PRIVATE bool float_u(pEC ec, double(*oper)(double)) {
   return false;
 }
 PRIVATE bool float_p(pEC ec, double(*oper)(double, double)) {
-  if (isFloatable(ec)) {
+  if (isFloatable2(ec)) {
     binary<double>(ec, &floatNewnode, oper(floatVal2(ec), floatVal(ec)));
     return true;
   }
@@ -343,10 +343,10 @@ PRIVATE void pop(pEntry &N) {
 template<typename T> PUBLIC void nullary(pEC ec, pNode (*constructor)(pEC, T, pNode), T value) {
   ec->stk = constructor(ec, value, ec->stk);
 }
-template<typename T> PUBLIC void unary(pEC ec, pNode (*constructor)(pEC, T, pNode), Types value) {
+template<typename T> PUBLIC void unary(pEC ec, pNode (*constructor)(pEC, T, pNode), T value) {
   ec->stk = constructor(ec, value, ec->stk->next);
 }
-template<typename T> PUBLIC void binary(pEC ec, pNode (*constructor)(pEC, T, pNode), Types value) {
+template<typename T> PUBLIC void binary(pEC ec, pNode (*constructor)(pEC, T, pNode), T value) {
   ec->stk = constructor(ec, value, ec->stk->next->next);
 }
 PRIVATE void gnullary(pEC ec, Operator type, Types value) {
@@ -3733,6 +3733,4 @@ PUBLIC const char *opername(pEC ec, int o) {
   return optable[(short)o].name;
 }
 
-/* Template expansions */
-//template void unary<double>(pEC, pNode(*constructor)(pEC, double, pNode), double);
 /* END of INTERP.C */
