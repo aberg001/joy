@@ -21,6 +21,12 @@ PRIVATE void make_manual(pEC ec, int style /* 0=plain, 1=html, 2=latex */);
 PRIVATE void manual_list_(pEC ec);
 PRIVATE void manual_list_aux_(pEC ec);
 
+template<typename T> PUBLIC void nullary(pEC ec, pNode (*constructor)(pEC, T, pNode), T value);
+template<typename T> PUBLIC void unary(pEC ec, pNode (*constructor)(pEC, T, pNode), T value);
+template<typename T> PUBLIC void binary(pEC ec, pNode (*constructor)(pEC, T, pNode), T value);
+PRIVATE void gnullary(pEC ec, Operator type, Types value);
+
+
 PRIVATE void oneparam(pEC ec, const char *name) {
   if (ec->stk == NULL)
     execerror(ec, "one parameter", name);
@@ -48,149 +54,228 @@ PRIVATE void fiveparams(pEC ec, const char *name) {
     execerror(ec, "five parameters", name);
 }
 
-PRIVATE void onequote(pEC ec, const char *name) {
+PRIVATE void isOneQuote(pEC ec, const char *name) {
   if (ec->stk->op != LIST_)
     execerror(ec, "quotation as top parameter", name);
 }
-PRIVATE void twoquotes(pEC ec, const char *name) {
-  onequote(ec, name);
+PRIVATE void isTwoQuotes(pEC ec, const char *name) {
+  isOneQuote(ec, name);
   if (ec->stk->next->op != LIST_)
     execerror(ec, "quotation as second parameter", name);
 }
-PRIVATE void threequotes(pEC ec, const char *name) {
-  twoquotes(ec, name);
+PRIVATE void isThreeQuotes(pEC ec, const char *name) {
+  isTwoQuotes(ec, name);
   if (ec->stk->next->next->op != LIST_)
     execerror(ec, "quotation as third parameter", name);
 }
-PRIVATE void fourquotes(pEC ec, const char *name) {
-  threequotes(ec, name);
+PRIVATE void isFourQuotes(pEC ec, const char *name) {
+  isThreeQuotes(ec, name);
   if (ec->stk->next->next->next->op != LIST_)
     execerror(ec, "quotation as fourth parameter", name);
 }
-PRIVATE void same2types(pEC ec, const char *name) {
+PRIVATE void isSame2types(pEC ec, const char *name) {
   if (ec->stk->op != ec->stk->next->op)
     execerror(ec, "two parameters of the same type", name);
 }
-PRIVATE void string(pEC ec, const char *name) {
+PRIVATE void isString(pEC ec, const char *name) {
   if (ec->stk->op != STRING_)
     execerror(ec, "string", name);
 }
-PRIVATE void string2(pEC ec, const char *name) {
+PRIVATE void isString2(pEC ec, const char *name) {
   if (ec->stk->next->op != STRING_)
     execerror(ec, "string as second parameter", name);
 }
-PRIVATE void integer(pEC ec, const char *name) {
+PRIVATE void isInteger(pEC ec, const char *name) {
   if (ec->stk->op != INTEGER_)
     execerror(ec, "integer", name);
 }
-PRIVATE void integer2(pEC ec, const char *name) {
+PRIVATE void isInteger2(pEC ec, const char *name) {
   if (ec->stk->next->op != INTEGER_)
     execerror(ec, "integer as second parameter", name);
 }
-PRIVATE void character(pEC ec, const char *name) {
+PRIVATE void isCharacter(pEC ec, const char *name) {
   if (ec->stk->op != CHAR_)
     execerror(ec, "character", name);
 }
-PRIVATE void integers2(pEC ec, const char *name) {
+PRIVATE void isIntegers2(pEC ec, const char *name) {
   if (ec->stk->op != INTEGER_ || ec->stk->next->op != INTEGER_)
     execerror(ec, "two integers", name);
 }
-PRIVATE void numerictype(pEC ec, const char *name) {
+PRIVATE void isNumerictype(pEC ec, const char *name) {
   if (ec->stk->op != INTEGER_ && ec->stk->op !=  CHAR_
       && ec->stk->op != BOOLEAN_)
     execerror(ec, "numeric", name);
 }
-PRIVATE void numeric2(pEC ec, const char *name) {
+PRIVATE void isNumeric2(pEC ec, const char *name) {
   if (ec->stk->next->op != INTEGER_ && ec->stk->next->op != CHAR_)	\
     execerror(ec, "numeric second parameter", name);
 }
-// #define SAME2TYPES(NAME)					\
-//     if (ec->stk->op != ec->stk->next->op)				\
-// 	execerror(ec, "two parameters of the same type",NAME)
-// #define STRING(NAME)						\
-//     if (ec->stk->op != STRING_)					\
-// 	execerror(ec, "string",NAME)
-// #define STRING2(NAME)						\
-//     if (ec->stk->next->op != STRING_)					\
-// 	execerror(ec, "string as second parameter",NAME)
-// #define INTEGER(NAME)						\
-//     if (ec->stk->op != INTEGER_)					\
-// 	execerror(ec, "integer",NAME)
-// #define INTEGER2(NAME)						\
-//     if (ec->stk->next->op != INTEGER_)					\
-// 	execerror(ec, "integer as second parameter",NAME)
-// #define CHARACTER(NAME)						\
-//     if (ec->stk->op != CHAR_)					\
-// 	execerror(ec, "character",NAME)
-// #define INTEGERS2(NAME)						\
-//     if (ec->stk->op != INTEGER_ || ec->stk->next->op != INTEGER_)	\
-// 	execerror(ec, "two integers",NAME)
-// #define NUMERICTYPE(NAME)					\
-//     if (ec->stk->op != INTEGER_ && ec->stk->op !=  CHAR_		\
-// 	  && ec->stk->op != BOOLEAN_ )				\
-// 	execerror(ec, "numeric",NAME)
-// #define NUMERIC2(NAME)						\
-//     if (ec->stk->next->op != INTEGER_ && ec->stk->next->op != CHAR_)	\
-// 	execerror(ec, "numeric second parameter",NAME)
-#define FLOATABLE						\
-    (ec->stk->op == INTEGER_ || ec->stk->op == FLOAT_)
-#define FLOATABLE2						\
-    ((ec->stk->op == FLOAT_ && ec->stk->next->op == FLOAT_) ||		\
-	(ec->stk->op == FLOAT_ && ec->stk->next->op == INTEGER_) ||	\
-	(ec->stk->op == INTEGER_ && ec->stk->next->op == FLOAT_))
-#define FLOAT(NAME)						\
-    if (!FLOATABLE)						\
-	execerror(ec, "float or integer", NAME);
-#define FLOAT2(NAME)						\
-    if (!(FLOATABLE2 || (ec->stk->op == INTEGER_ && ec->stk->next->op == INTEGER_))) \
-	execerror(ec, "two floats or integers", NAME)
-#define FLOATVAL						\
-    (ec->stk->op == FLOAT_ ? ec->stk->u.dbl : (double) ec->stk->u.num)
-#define FLOATVAL2						\
-    (ec->stk->next->op == FLOAT_ ? ec->stk->next->u.dbl : (double) ec->stk->next->u.num)
-#define FLOAT_U(OPER)						\
-    if (FLOATABLE) { UNARY(FLOAT_NEWNODE, OPER(FLOATVAL)); return; }
-#define FLOAT_P(OPER)						\
-    if (FLOATABLE2) { BINARY(FLOAT_NEWNODE, OPER(FLOATVAL2, FLOATVAL)); return; }
-#define FLOAT_I(OPER)						\
-    if (FLOATABLE2) { BINARY(FLOAT_NEWNODE, (FLOATVAL2) OPER (FLOATVAL)); return; }
+PRIVATE bool isFloatable(pEC ec) {
+  return (ec->stk->op == INTEGER_ || ec->stk->op == FLOAT_);
+}
+PRIVATE bool isFloatable2(pEC ec) {
+  return ((ec->stk->op == FLOAT_ && ec->stk->next->op == FLOAT_) ||
+          (ec->stk->op == FLOAT_ && ec->stk->next->op == INTEGER_) ||
+          (ec->stk->op == INTEGER_ && ec->stk->next->op == FLOAT_));
+}
+PRIVATE void isFloat(pEC ec, const char *name) {
+  if (!isFloatable(ec))
+    execerror(ec, "float or integer", name);
+}
+PRIVATE void isFloat2(pEC ec, const char *name) {
+  if (!(isFloatable(ec)
+        || (ec->stk->op == INTEGER_ && ec->stk->next->op == INTEGER_)))
+    execerror(ec, "two floats or integers", name);
+}
+PRIVATE double floatVal(pEC ec) {
+  return (ec->stk->op == FLOAT_
+          ? ec->stk->u.dbl
+          : static_cast<double>(ec->stk->u.num));
+}
+PRIVATE double floatVal2(pEC ec) {
+  return (ec->stk->next->op == FLOAT_
+          ? ec->stk->next->u.dbl
+          : static_cast<double>(ec->stk->next->u.num));
+}
+PRIVATE bool float_u(pEC ec, double(*oper)(double)) {
+  if (isFloatable(ec)) {
+    unary<double>(ec, &floatNewnode, oper(floatVal(ec)));
+    return true;
+  }
+  return false;
+}
+PRIVATE bool float_p(pEC ec, double(*oper)(double, double)) {
+  if (isFloatable(ec)) {
+    binary<double>(ec, &floatNewnode, oper(floatVal2(ec), floatVal(ec)));
+    return true;
+  }
+  return false;
+}
+// PRIVATE bool float_i(pEC ec, const char *name) {
+//   if (FLOATABLE2) {
+//     binary<double>(ec, &floatNewnode, (FLOATVAL2) OPER (FLOATVAL)); return; }
+// }
+PRIVATE void isFile(pEC ec, const char *name) {
 #define FILE(NAME)						\
     if (ec->stk->op != FILE_ || ec->stk->u.fil == NULL)			\
 	execerror(ec, "file", NAME)
+}
+PRIVATE void checkZero(pEC ec, const char *name) {
 #define CHECKZERO(NAME)						\
     if (ec->stk->u.num == 0)					\
 	execerror(ec, "non-zero operand",NAME)
+}
+PRIVATE void isList(pEC ec, const char *name) {
 #define LIST(NAME)						\
     if (ec->stk->op != LIST_)					\
 	execerror(ec, "list",NAME)
+}
+PRIVATE void isList2(pEC ec, const char *name) {
 #define LIST2(NAME)						\
     if (ec->stk->next->op != LIST_)					\
 	execerror(ec, "list as second parameter",NAME)
+}
+PRIVATE void isUserdef(pEC ec, const char *name) {
 #define USERDEF(NAME)						\
     if (ec->stk->op != USR_)					\
 	execerror(ec, "user defined symbol",NAME)
+}
+PRIVATE void checkList(pEC ec, const char *name) {
 #define CHECKLIST(OPR,NAME)					\
     if (OPR != LIST_)						\
 	execerror(ec, "internal list",NAME)
+}
+PRIVATE void checkSetMember(pEC ec, const char *name) {
 #define CHECKSETMEMBER(NODE,NAME)				\
     if ((NODE->op != INTEGER_ && NODE->op != CHAR_) || 		\
 	NODE->u.num >= SETSIZE)					\
 	execerror(ec, "small numeric",NAME)
+}
+PRIVATE void checkEmptySet(pEC ec, const char *name) {
 #define CHECKEMPTYSET(SET,NAME)					\
     if (SET == 0)						\
 	execerror(ec, "non-empty set",NAME)
+}
+PRIVATE void checkEmptyString(pEC ec, const char *name) {
 #define CHECKEMPTYSTRING(STRING,NAME)				\
     if (*STRING == '\0')					\
 	execerror(ec, "non-empty string",NAME)
+}
+PRIVATE void checkEmptyList(pEC ec, const char *name) {
 #define CHECKEMPTYLIST(LIST,NAME)				\
     if (LIST == NULL)						\
 	execerror(ec, "non-empty list",NAME)
+}
+PRIVATE void indexTooLarge(pEC ec, const char *name) {
 #define INDEXTOOLARGE(NAME)					\
     execerror(ec, "smaller index",NAME)
+}
+PRIVATE void badAggregate(pEC ec, const char *name) {
 #define BADAGGREGATE(NAME)					\
     execerror(ec, "aggregate parameter",NAME)
-#define BADDATA(NAME)						\
-    execerror(ec, "different type",NAME)
+}
+PRIVATE void badData(pEC ec, const char *name) {
+    execerror(ec, "different type", name);
+}
+// #define FLOATABLE						\
+//     (ec->stk->op == INTEGER_ || ec->stk->op == FLOAT_)
+// #define FLOATABLE2						\
+//     ((ec->stk->op == FLOAT_ && ec->stk->next->op == FLOAT_) ||		\
+// 	(ec->stk->op == FLOAT_ && ec->stk->next->op == INTEGER_) ||	\
+// 	(ec->stk->op == INTEGER_ && ec->stk->next->op == FLOAT_))
+// #define FLOAT(NAME)						\
+//     if (!FLOATABLE)						\
+// 	execerror(ec, "float or integer", NAME);
+// #define FLOAT2(NAME)						\
+//     if (!(FLOATABLE2 || (ec->stk->op == INTEGER_ && ec->stk->next->op == INTEGER_))) \
+// 	execerror(ec, "two floats or integers", NAME)
+// #define FLOATVAL						\
+//     (ec->stk->op == FLOAT_ ? ec->stk->u.dbl : (double) ec->stk->u.num)
+// #define FLOATVAL2						\
+//     (ec->stk->next->op == FLOAT_ ? ec->stk->next->u.dbl : (double) ec->stk->next->u.num)
+// #define FLOAT_U(OPER)						\
+//     if (FLOATABLE) { UNARY(FLOAT_NEWNODE, OPER(FLOATVAL)); return; }
+// #define FLOAT_P(OPER)						\
+//     if (FLOATABLE2) { BINARY(FLOAT_NEWNODE, OPER(FLOATVAL2, FLOATVAL)); return; }
+// #define FLOAT_I(OPER)						\
+//     if (FLOATABLE2) { BINARY(FLOAT_NEWNODE, (FLOATVAL2) OPER (FLOATVAL)); return; }
+// #define FILE(NAME)						\
+//     if (ec->stk->op != FILE_ || ec->stk->u.fil == NULL)			\
+// 	execerror(ec, "file", NAME)
+// #define CHECKZERO(NAME)						\
+//     if (ec->stk->u.num == 0)					\
+// 	execerror(ec, "non-zero operand",NAME)
+// #define LIST(NAME)						\
+//     if (ec->stk->op != LIST_)					\
+// 	execerror(ec, "list",NAME)
+// #define LIST2(NAME)						\
+//     if (ec->stk->next->op != LIST_)					\
+// 	execerror(ec, "list as second parameter",NAME)
+// #define USERDEF(NAME)						\
+//     if (ec->stk->op != USR_)					\
+// 	execerror(ec, "user defined symbol",NAME)
+// #define CHECKLIST(OPR,NAME)					\
+//     if (OPR != LIST_)						\
+// 	execerror(ec, "internal list",NAME)
+// #define CHECKSETMEMBER(NODE,NAME)				\
+//     if ((NODE->op != INTEGER_ && NODE->op != CHAR_) || 		\
+// 	NODE->u.num >= SETSIZE)					\
+// 	execerror(ec, "small numeric",NAME)
+// #define CHECKEMPTYSET(SET,NAME)					\
+//     if (SET == 0)						\
+// 	execerror(ec, "non-empty set",NAME)
+// #define CHECKEMPTYSTRING(STRING,NAME)				\
+//     if (*STRING == '\0')					\
+// 	execerror(ec, "non-empty string",NAME)
+// #define CHECKEMPTYLIST(LIST,NAME)				\
+//     if (LIST == NULL)						\
+// 	execerror(ec, "non-empty list",NAME)
+// #define INDEXTOOLARGE(NAME)					\
+//     execerror(ec, "smaller index",NAME)
+// #define BADAGGREGATE(NAME)					\
+//     execerror(ec, "aggregate parameter",NAME)
+// #define BADDATA(NAME)						\
+//     execerror(ec, "different type",NAME)
 
 PRIVATE pNode dmp(pEC ec) {
   return ec->dump->u.lis;
@@ -255,9 +340,15 @@ PRIVATE void pop(pNode &N) {
 PRIVATE void pop(pEntry &N) {
   N = N->next;
 }
-// PRIVATE void nullary(pEC ec, constructor, Types value) {
-//   ec->stk = constructor(ec, value, ec->stk);
-// }
+template<typename T> PUBLIC void nullary(pEC ec, pNode (*constructor)(pEC, T, pNode), T value) {
+  ec->stk = constructor(ec, value, ec->stk);
+}
+template<typename T> PUBLIC void unary(pEC ec, pNode (*constructor)(pEC, T, pNode), Types value) {
+  ec->stk = constructor(ec, value, ec->stk->next);
+}
+template<typename T> PUBLIC void binary(pEC ec, pNode (*constructor)(pEC, T, pNode), Types value) {
+  ec->stk = constructor(ec, value, ec->stk->next->next);
+}
 PRIVATE void gnullary(pEC ec, Operator type, Types value) {
   ec->stk = newnode(ec, type, value, ec->stk);
 }
@@ -343,7 +434,7 @@ PRIVATE void name_(pEC ec) {
 PRIVATE void intern_(pEC ec) {
   char *p;
   oneparam(ec, "intern");
-  string(ec, "intern");
+  isString(ec, "intern");
   strcpy(ec->id, ec->stk->u.str);
   ec->hashvalue = 0;
   for (p = ec->id; *p; p++) ec->hashvalue += *p;
@@ -359,7 +450,7 @@ PRIVATE void intern_(pEC ec) {
 
 PRIVATE void getenv_(pEC ec) {
   oneparam(ec, "getenv");
-  string(ec, "getenv");
+  isString(ec, "getenv");
   UNARY(STRING_NEWNODE, getenv(ec->stk->u.str)); 
 }
 
@@ -464,7 +555,7 @@ PRIVATE void PROCEDURE(pEC ec) {                               \
 #define ANDORXOR(PROCEDURE, NAME, OPER1, OPER2)			\
 PRIVATE void PROCEDURE(pEC ec)	{				\
     twoparams(ec, NAME);						\
-    same2types(ec, NAME);						\
+    isSame2types(ec, NAME);						\
     switch (ec->stk->next->op) {				\
         case SET_:						\
 	    BINARY(SET_NEWNODE, (long)(ec->stk->next->u.set OPER1 ec->stk->u.set));	\
@@ -473,7 +564,7 @@ PRIVATE void PROCEDURE(pEC ec)	{				\
 	    BINARY(BOOLEAN_NEWNODE, (long)(ec->stk->next->u.num OPER2 ec->stk->u.num));	\
 	    return;						\
 	default:						\
-	    BADDATA(NAME); } }
+	    badData(ec, NAME); } }
 ANDORXOR(and_, "and", &, &&)
 ANDORXOR(or_, "or", |, ||)
 ANDORXOR(xor_, "xor", ^, !=)
@@ -484,7 +575,7 @@ ANDORXOR(xor_, "xor", ^, !=)
 #define ORDCHR(PROCEDURE, NAME, RESULTTYP)			\
 PRIVATE void PROCEDURE(pEC ec)	{				\
     oneparam(ec, NAME);						\
-    numerictype(ec, NAME);						\
+    isNumerictype(ec, NAME);						\
     UNARY(RESULTTYP, ec->stk->u.num);				\
 }
 ORDCHR(ord_, "ord", INTEGER_NEWNODE)
@@ -493,7 +584,7 @@ ORDCHR(chr_, "chr", CHAR_NEWNODE)
 PRIVATE void abs_(pEC ec) {
   oneparam(ec, "abs");
   /* start new */
-  FLOAT("abs");
+  isFloat(ec, "abs");
   if (ec->stk->op == INTEGER_) { 
     if (ec->stk->u.num >= 0) 
       return;
@@ -503,8 +594,9 @@ PRIVATE void abs_(pEC ec) {
     } 
   }
   /* end new */
-  FLOAT_U(fabs);
-  integer(ec, "abs");
+  if (float_u(ec, fabs))
+    return;
+  isInteger(ec, "abs");
   if (ec->stk->u.num < 0) 
     UNARY(INTEGER_NEWNODE, - ec->stk->u.num);
 }
@@ -522,7 +614,7 @@ PRIVATE double fsgn(double f) {
 PRIVATE void sign_(pEC ec) {
   oneparam(ec, "sign");
   /* start new */
-  FLOAT("sign");
+  isFloat(ec, "sign");
   if (ec->stk->op == INTEGER_) { 
     long i = ec->stk->u.num;
     if (i == 0 || i == 1) 
@@ -533,8 +625,9 @@ PRIVATE void sign_(pEC ec) {
     } 
   }
   /* end new */
-  FLOAT_U(fsgn);
-  integer(ec, "sign");
+  if (float_u(ec, fsgn))
+    return;
+  isInteger(ec, "sign");
   if (ec->stk->u.num < 0)
     UNARY(INTEGER_NEWNODE, -1L);
   else 
@@ -544,8 +637,9 @@ PRIVATE void sign_(pEC ec) {
 
 PRIVATE void neg_(pEC ec) {
   oneparam(ec, "neg");
-  FLOAT_U(-);
-  integer(ec, "neg");
+  if (float_u(ec, [](double a) -> double { return -a; }))
+    return;
+  isInteger(ec, "neg");
   UNARY(INTEGER_NEWNODE, -ec->stk->u.num);
 }
 
@@ -563,8 +657,9 @@ MULDIV(divide_, "/", /, CHECKZERO("/"))
 
 PRIVATE void mul_(pEC ec) {
   twoparams(ec, "*");
-  FLOAT_I(*);
-  integers2(ec, "*");
+  if (float_p(ec, [](double a, double b)->double { return a * b; }))
+    return;
+  isIntegers2(ec, "*");
   BINARY(INTEGER_NEWNODE, ec->stk->next->u.num * ec->stk->u.num);
 }
 
@@ -573,15 +668,17 @@ PRIVATE void divide_(pEC ec) {
   if ((ec->stk->op == FLOAT_   && ec->stk->u.dbl == 0.0)  ||
       (ec->stk->op == INTEGER_ && ec->stk->u.num == 0))
     execerror(ec, "non-zero divisor", "/");
-  FLOAT_I(/);
-  integers2(ec, "/");
+  if (float_p(ec, [](double a, double b)->double { return a / b; }))
+    return;
+  isIntegers2(ec, "/");
   BINARY(INTEGER_NEWNODE, ec->stk->next->u.num / ec->stk->u.num);
 }
 
 PRIVATE void rem_(pEC ec) {
   twoparams(ec, "rem");
-  FLOAT_P(fmod);
-  integers2(ec, "rem");
+  if (float_p(ec, fmod))
+    return;
+  isIntegers2(ec, "rem");
   CHECKZERO("rem");
   BINARY(INTEGER_NEWNODE, ec->stk->next->u.num % ec->stk->u.num); 
 }
@@ -589,7 +686,7 @@ PRIVATE void rem_(pEC ec) {
 PRIVATE void div_(pEC ec) {
   ldiv_t result;
   twoparams(ec, "div");
-  integers2(ec, "div");
+  isIntegers2(ec, "div");
   CHECKZERO("div");
   result = ldiv(ec->stk->next->u.num, ec->stk->u.num);
   BINARY(INTEGER_NEWNODE, result.quot);
@@ -599,16 +696,16 @@ PRIVATE void div_(pEC ec) {
 PRIVATE void strtol_(pEC ec) {
   twoparams(ec, "strtol");
   SAVESTACK;
-  integer(ec, "strtol");
+  isInteger(ec, "strtol");
   POP(ec->stk);
-  string(ec, "strtol");
+  isString(ec, "strtol");
   UNARY(INTEGER_NEWNODE, strtol(SAVED2->u.str, NULL, SAVED1->u.num));
   POP(ec->dump); 
 }
 
 PRIVATE void strtod_(pEC ec) {
   oneparam(ec, "strtod");
-  string(ec, "strtod");
+  isString(ec, "strtod");
   UNARY(FLOAT_NEWNODE, strtod(ec->stk->u.str, NULL)); 
 }
 
@@ -618,13 +715,13 @@ PRIVATE void format_(pEC ec) {
   char format[7];
   char *result;
   fourparams(ec, "format");
-  integer(ec, "format");
-  integer2(ec, "format");
+  isInteger(ec, "format");
+  isInteger2(ec, "format");
   prec = ec->stk->u.num;
   POP(ec->stk);
   width = ec->stk->u.num;
   POP(ec->stk);
-  character(ec, "format");
+  isCharacter(ec, "format");
   spec = ec->stk->u.num;
   POP(ec->stk);
   if (!strchr("dioxX", spec))
@@ -632,7 +729,7 @@ PRIVATE void format_(pEC ec) {
   strcpy(format, "%*.*ld");
   format[5] = spec;
   result = static_cast<char *>(malloc(INPLINEMAX));			/* should be sufficient */
-  numerictype(ec, "format");
+  isNumerictype(ec, "format");
   sprintf(result, format, width, prec, ec->stk->u.num);
   UNARY(STRING_NEWNODE, result);
   return; 
@@ -644,13 +741,13 @@ PRIVATE void formatf_(pEC ec) {
   char format[7];
   char *result;
   fourparams(ec, "format");
-  integer(ec, "format");
-  integer2(ec, "format");
+  isInteger(ec, "format");
+  isInteger2(ec, "format");
   prec = ec->stk->u.num;
   POP(ec->stk);
   width = ec->stk->u.num;
   POP(ec->stk);
-  character(ec, "format");
+  isCharacter(ec, "format");
   spec = ec->stk->u.num;
   POP(ec->stk);
   if (!strchr("eEfgG", spec))
@@ -658,7 +755,7 @@ PRIVATE void formatf_(pEC ec) {
   strcpy(format, "%*.*lg");
   format[5] = spec;
   result = static_cast<char *>(malloc(INPLINEMAX));			/* should be sufficient */
-  FLOAT("formatf");
+  isFloat(ec, "formatf");
   sprintf(result, format, width, prec, ec->stk->u.dbl);
   UNARY(STRING_NEWNODE, result);
   return; 
@@ -673,7 +770,7 @@ PRIVATE void PROCEDURE(pEC ec) {				\
     long wday;							\
     time_t timval;						\
     oneparam(ec, NAME);						\
-    integer(ec, NAME);						\
+    isInteger(ec, NAME);						\
     timval = ec->stk->u.num;					\
     t = FUNC(&timval);						\
     wday = t->tm_wday;						\
@@ -757,7 +854,7 @@ PRIVATE void strftime_(pEC ec) {
   char *result;
   size_t length;
   twoparams(ec, "strftime");
-  string(ec, "strftime");
+  isString(ec, "strftime");
   fmt = ec->stk->u.str;
   POP(ec->stk);
   LIST("strftime");
@@ -774,8 +871,8 @@ PRIVATE void strftime_(pEC ec) {
 #define UFLOAT(PROCEDURE, NAME, FUNC)				\
 PRIVATE void PROCEDURE(pEC ec)	{				\
     oneparam(ec, NAME);						\
-    FLOAT(NAME);						\
-    UNARY(FLOAT_NEWNODE, FUNC(FLOATVAL));				\
+    isFloat(ec, NAME);						\
+    UNARY(FLOAT_NEWNODE, FUNC(floatVal(ec)));				\
     return; }
 UFLOAT(acos_, "acos", acos)
 UFLOAT(asin_, "asin", asin)
@@ -796,8 +893,8 @@ UFLOAT(tanh_, "tanh", tanh)
 #define BFLOAT(PROCEDURE, NAME, FUNC)				\
 PRIVATE void PROCEDURE(pEC ec)	{				\
     twoparams(ec, NAME);						\
-    FLOAT2(NAME);						\
-    BINARY(FLOAT_NEWNODE, FUNC(FLOATVAL2, FLOATVAL));			\
+    isFloat2(ec, NAME);						\
+    binary<double>(ec, floatNewnode, FUNC(floatVal2(ec), floatVal(ec)));			\
     return; }
 BFLOAT(atan2_, "atan2", atan2)
 BFLOAT(pow_, "pow", pow)
@@ -805,8 +902,8 @@ BFLOAT(pow_, "pow", pow)
 PRIVATE void frexp_(pEC ec) {
   int exp;
   oneparam(ec, "frexp");
-  FLOAT("frexp");
-  UNARY(FLOAT_NEWNODE, frexp(FLOATVAL, &exp));
+  isFloat(ec, "frexp");
+  unary<double>(ec, floatNewnode, frexp(floatVal(ec), &exp));
   NULLARY(INTEGER_NEWNODE, (long)exp);
   return; 
 }
@@ -814,8 +911,8 @@ PRIVATE void frexp_(pEC ec) {
 PRIVATE void modf_(pEC ec) {
   double exp;
   oneparam(ec, "frexp");
-  FLOAT("frexp");
-  UNARY(FLOAT_NEWNODE, modf(FLOATVAL, &exp));
+  isFloat(ec, "frexp");
+  unary<double>(ec, floatNewnode, modf(floatVal(ec), &exp));
   NULLARY(FLOAT_NEWNODE, exp);
   return; 
 }
@@ -823,18 +920,18 @@ PRIVATE void modf_(pEC ec) {
 PRIVATE void ldexp_(pEC ec) {
   long exp;
   twoparams(ec, "ldexp");
-  integer(ec, "ldexp");
+  isInteger(ec, "ldexp");
   exp = ec->stk->u.num;
   POP(ec->stk);
-  FLOAT("ldexp");
-  UNARY(FLOAT_NEWNODE, ldexp(FLOATVAL, (int)exp));
+  isFloat(ec, "ldexp");
+  unary<double>(ec, floatNewnode, ldexp(floatVal(ec), static_cast<int>(exp)));
   return; 
 }
 
 PRIVATE void trunc_(pEC ec) {
   oneparam(ec, "trunc");
-  FLOAT("trunc");
-  UNARY(INTEGER_NEWNODE, (long)FLOATVAL);
+  isFloat(ec, "trunc");
+  unary<long>(ec, integerNewnode, static_cast<long>(floatVal(ec)));
 }
 
 /* - - -   NUMERIC   - - - */
@@ -842,19 +939,19 @@ PRIVATE void trunc_(pEC ec) {
 #define PREDSUCC(PROCEDURE, NAME, OPER)				\
 PRIVATE void PROCEDURE(pEC ec)	{				\
     oneparam(ec, NAME);						\
-    numerictype(ec, NAME);						\
+    isNumerictype(ec, NAME);						\
     if (ec->stk->op == CHAR_)					\
-	UNARY(CHAR_NEWNODE, ec->stk->u.num OPER 1);			\
-    else UNARY(INTEGER_NEWNODE, ec->stk->u.num OPER 1); }
+	unary<long>(ec, charNewnode, ec->stk->u.num OPER 1);			\
+    else unary<long>(ec, integerNewnode, ec->stk->u.num OPER 1); }
 PREDSUCC(pred_, "pred", -)
 PREDSUCC(succ_, "succ", +)
 
 #define PLUSMINUS(PROCEDURE, NAME, OPER)				\
 PRIVATE void PROCEDURE(pEC ec)	{				\
     twoparams(ec, NAME);						\
-    FLOAT_I(OPER);						\
-    integer(ec, NAME);						\
-    numeric2(ec, NAME);						\
+    float_p(ec, [](double a, double b) -> double { return a OPER b; }); \
+    isInteger(ec, NAME);						\
+    isNumeric2(ec, NAME);						\
     if (ec->stk->next->op == CHAR_)					\
 	BINARY(CHAR_NEWNODE, ec->stk->next->u.num OPER ec->stk->u.num);	\
     else BINARY(INTEGER_NEWNODE, ec->stk->next->u.num OPER ec->stk->u.num); }
@@ -864,13 +961,13 @@ PLUSMINUS(minus_, "-", -)
 #define MAXMIN(PROCEDURE, NAME, OPER)				\
 PRIVATE void PROCEDURE(pEC ec)	{				\
     twoparams(ec, NAME);						\
-    if (FLOATABLE2)						\
+    if (isFloatable2(ec))						\
       { BINARY(FLOAT_NEWNODE,						\
-	    FLOATVAL OPER FLOATVAL2 ?				\
-	    FLOATVAL2 : FLOATVAL);				\
+	    floatVal(ec) OPER floatVal2(ec) ?				\
+	    floatVal2(ec) : floatVal(ec));				\
 	return; } 						\
-    same2types(ec, NAME);						\
-    numerictype(ec, NAME);						\
+    isSame2types(ec, NAME);						\
+    isNumerictype(ec, NAME);						\
     if (ec->stk->op == CHAR_)					\
 	BINARY(CHAR_NEWNODE,					\
 	    ec->stk->u.num OPER ec->stk->next->u.num ?			\
@@ -887,14 +984,14 @@ PRIVATE void PROCEDURE(pEC ec)	{				\
     twoparams(ec, NAME);						\
     switch (ec->stk->op)						\
       { case BOOLEAN_: case CHAR_: case INTEGER_:		\
-	    if (FLOATABLE2)					\
-		comp = FLOATVAL2 - FLOATVAL OPR 0;		\
+	    if (isFloatable2(ec))					\
+		comp = floatVal2(ec) - floatVal(ec) OPR 0;		\
 	    else						\
 		comp = ec->stk->next->u.num - ec->stk->u.num OPR 0;	\
 	    break;						\
 	case FLOAT_:						\
-	    if (FLOATABLE2)					\
-		comp = FLOATVAL2 - FLOATVAL OPR 0;		\
+	    if (isFloatable2(ec))					\
+		comp = floatVal2(ec) - floatVal(ec) OPR 0;		\
 	    else						\
 		comp = 0;					\
 	    break;						\
@@ -909,10 +1006,10 @@ PRIVATE void PROCEDURE(pEC ec)	{				\
 	    comp = i OPR 0;					\
 	    break; }						\
 	case LIST_:						\
-	    BADDATA(NAME);					\
+	    badData(ec, NAME);					\
 	default:						\
 	    if (ec->stk->next->op == LIST_)				\
-	      BADDATA(NAME);					\
+	      badData(ec, NAME);					\
 	    comp = strcmp(GETSTRING(ec->stk->next), GETSTRING(ec->stk))	\
 		   OPR 0;					\
 	    break; }						\
@@ -930,8 +1027,8 @@ COMPREL(compare_, "compare", INTEGER_NEWNODE, +)
 
 PRIVATE void fopen_(pEC ec) {
   twoparams(ec, "fopen");
-  string(ec, "fopen");
-  string2(ec, "fopen");
+  isString(ec, "fopen");
+  isString2(ec, "fopen");
   BINARY(FILE_NEWNODE, fopen(ec->stk->next->u.str, ec->stk->u.str));
   return; 
 }
@@ -957,15 +1054,15 @@ PRIVATE void fflush_(pEC ec) {
 
 PRIVATE void fremove_(pEC ec) {
   oneparam(ec, "fremove");
-  string(ec, "fremove");
+  isString(ec, "fremove");
   UNARY(BOOLEAN_NEWNODE, (long)!remove(ec->stk->u.str));
   return; 
 }
 
 PRIVATE void frename_(pEC ec) {
   twoparams(ec, "frename");
-  string(ec, "frename");
-  string2(ec, "frename");
+  isString(ec, "frename");
+  isString2(ec, "frename");
   BINARY(BOOLEAN_NEWNODE, (long)!rename(ec->stk->next->u.str, ec->stk->u.str));
   return; 
 }
@@ -1014,7 +1111,7 @@ PRIVATE void fput_(pEC ec) {
 PRIVATE void fputch_(pEC ec) {
   int ch;
   twoparams(ec, "fputch");
-  integer(ec, "fputch");
+  isInteger(ec, "fputch");
   ch = ec->stk->u.num;
   POP(ec->stk);
   FILE("fputch");
@@ -1037,7 +1134,7 @@ PRIVATE void fread_(pEC ec) {
   unsigned char *buf;
   long count;
   twoparams(ec, "fread");
-  integer(ec, "fread");
+  isInteger(ec, "fread");
   count = ec->stk->u.num;
   POP(ec->stk);
   FILE("fread");
@@ -1073,8 +1170,8 @@ PRIVATE void fseek_(pEC ec) {
   long pos;
   int whence;
   threeparams(ec, "fseek");
-  integer(ec, "fseek");
-  integer2(ec, "fseek");
+  isInteger(ec, "fseek");
+  isInteger2(ec, "fseek");
   whence = ec->stk->u.num;
   POP(ec->stk);
   pos = ec->stk->u.num;
@@ -1482,7 +1579,7 @@ PRIVATE void take_(pEC ec) {
 
 PRIVATE void concat_(pEC ec) {
   twoparams(ec, "concat");
-  same2types(ec, "concat");
+  isSame2types(ec, "concat");
   switch (ec->stk->op) {
     case SET_:
       BINARY(SET_NEWNODE,ec->stk->next->u.set | ec->stk->u.set);
@@ -1532,7 +1629,7 @@ PRIVATE void concat_(pEC ec) {
 
 PRIVATE void enconcat_(pEC ec) {
   threeparams(ec, "enconcat");
-  same2types(ec, "enconcat");
+  isSame2types(ec, "enconcat");
   swapd_(ec); cons_(ec); concat_(ec);
 }
 
@@ -1566,7 +1663,7 @@ PRIVATE void not_(pEC ec) {
       UNARY(BOOLEAN_NEWNODE, (long)(! ec->stk->u.num));
       break;
     default:
-      BADDATA("not"); 
+      badData(ec, "not");
   }
 }
 
@@ -1593,7 +1690,7 @@ PRIVATE void size_(pEC ec) {
         break; 
       }
     default :
-      BADDATA("size"); 
+      badData(ec, "size");
   }
   UNARY(INTEGER_NEWNODE,siz);
 }
@@ -1622,7 +1719,7 @@ PRIVATE void small_(pEC ec) {
       sml = ec->stk->u.lis == NULL || ec->stk->u.lis->next == NULL;
       break;
     default:
-      BADDATA("small"); 
+      badData(ec, "small");
   }
   UNARY(BOOLEAN_NEWNODE,sml);
 }
@@ -1656,47 +1753,47 @@ PRIVATE void put_(pEC ec) {
   });
 }
 PRIVATE void putch_(pEC ec) {
-  usetop(ec, "putch", &numerictype, [](pEC ec)->void {
+  usetop(ec, "putch", &isNumerictype, [](pEC ec)->void {
     printf("%c", static_cast<char>(ec->stk->u.num));
   });
 }
 PRIVATE void putchars_(pEC ec) {
-  usetop(ec, "putchars", &string, [](pEC ec)->void {
+  usetop(ec, "putchars", &isString, [](pEC ec)->void {
     printf("%s", ec->stk->u.str);
   });
 }
 PRIVATE void setecho_(pEC ec) {
-  usetop(ec, "setecho", &numerictype, [](pEC ec)->void {
+  usetop(ec, "setecho", &isNumerictype, [](pEC ec)->void {
     ec->echoflag = ec->stk->u.num;
   });
 }
 PRIVATE void setautoput_(pEC ec) {
-  usetop(ec, "setautoput", &numerictype, [](pEC ec)->void {
+  usetop(ec, "setautoput", &isNumerictype, [](pEC ec)->void {
     ec->autoput = ec->stk->u.num;
   });
 }
 PRIVATE void setundeferror_(pEC ec) {
-  usetop(ec, "setundeferror", &numerictype, [](pEC ec)->void {
+  usetop(ec, "setundeferror", &isNumerictype, [](pEC ec)->void {
     ec->undeferror = ec->stk->u.num;
   });
 }
 PRIVATE void settracegc_(pEC ec) {
-  usetop(ec, "settracegc", &numerictype, [](pEC ec)->void {
+  usetop(ec, "settracegc", &isNumerictype, [](pEC ec)->void {
     ec->tracegc = ec->stk->u.num;
   });
 }
 PRIVATE void srand_(pEC ec) {
-  usetop(ec, "srand", &integer, [](pEC ec)->void {
+  usetop(ec, "srand", &isInteger, [](pEC ec)->void {
     srand(static_cast<unsigned int>(ec->stk->u.num));
   });
 }
 PRIVATE void include_(pEC ec) {
-  usetop(ec, "include", &string, [](pEC ec)->void {
+  usetop(ec, "include", &isString, [](pEC ec)->void {
     doinclude(ec, ec->stk->u.str);
   });
 }
 PRIVATE void system_(pEC ec) {
-  usetop(ec, "system", &string, [](pEC ec)->void {
+  usetop(ec, "system", &isString, [](pEC ec)->void {
     system(ec->stk->u.str);
   });
 }
@@ -1819,13 +1916,13 @@ start:
 
 PRIVATE void x_(pEC ec) {
     oneparam(ec, "x");
-    onequote(ec, "x");
+    isOneQuote(ec, "x");
     exeterm(ec, ec->stk->u.lis);
 }
 
 PRIVATE void i_(pEC ec) {
     oneparam(ec, "i");
-    onequote(ec, "i");
+    isOneQuote(ec, "i");
     SAVESTACK;
     POP(ec->stk);
     exeterm(ec, SAVED1->u.lis);
@@ -1834,7 +1931,7 @@ PRIVATE void i_(pEC ec) {
 
 PRIVATE void dip_(pEC ec) {
     twoparams(ec, "dip");
-    onequote(ec, "dip");
+    isOneQuote(ec, "dip");
     SAVESTACK;
     ec->stk = ec->stk->next->next;
     exeterm(ec, SAVED1->u.lis);
@@ -1844,7 +1941,7 @@ PRIVATE void dip_(pEC ec) {
 
 PRIVATE void n_ary(pEC ec, const char *name, void (*paramcount)(pEC, const char*), pNode (*top)(pEC)) {
     paramcount(ec, name);
-    onequote(ec, name);
+    isOneQuote(ec, name);
     savestack(ec);
     pop(ec->stk);
     exeterm(ec, SAVED1->u.lis);
@@ -1870,7 +1967,7 @@ PRIVATE void ternary_(pEC ec) {
 #define N_ARY(PROCEDURE,NAME,PARAMCOUNT,TOP)			\
 PRIVATE void PROCEDURE(pEC ec)	{				\
     PARAMCOUNT(NAME);						\
-    ONEQUOTE(NAME);						\
+    isOneQuote(ec, NAME);						\
     SAVESTACK;							\
     POP(ec->stk);							\
     exeterm(ec, SAVED1->u.lis);					\
@@ -1897,8 +1994,8 @@ PRIVATE void nullary_(pEC ec) {
 PRIVATE void times_(pEC ec) {
   int i,n;
   twoparams(ec, "times");
-  onequote(ec, "times");
-  integer2(ec, "times");
+  isOneQuote(ec, "times");
+  isInteger2(ec, "times");
   SAVESTACK;
   ec->stk = ec->stk->next->next;
   n = SAVED2->u.num;
@@ -1909,7 +2006,7 @@ PRIVATE void times_(pEC ec) {
 
 PRIVATE void infra_(pEC ec) {
   twoparams(ec, "infra");
-  onequote(ec, "infra");
+  isOneQuote(ec, "infra");
   LIST2("infra");
   SAVESTACK;
   ec->stk = SAVED2->u.lis;
@@ -1920,7 +2017,7 @@ PRIVATE void infra_(pEC ec) {
 
 PRIVATE void app1_(pEC ec) {
   twoparams(ec, "app1");
-  onequote(ec, "app1");
+  isOneQuote(ec, "app1");
   SAVESTACK;
   POP(ec->stk);
   exeterm(ec, SAVED1->u.lis);
@@ -1930,7 +2027,7 @@ PRIVATE void app1_(pEC ec) {
 PRIVATE void cleave_(pEC ec) {
   /*  X [P1] [P2] cleave ==>  X1 X2	*/
   threeparams(ec, "cleave");
-  twoquotes(ec, "cleave");
+  isTwoQuotes(ec, "cleave");
   SAVESTACK;
   ec->stk = SAVED3;
   exeterm(ec, SAVED2->u.lis);			/* [P1]		*/
@@ -1944,7 +2041,7 @@ PRIVATE void cleave_(pEC ec) {
 
 PRIVATE void app11_(pEC ec) {
   threeparams(ec, "app11");
-  onequote(ec, "app11");
+  isOneQuote(ec, "app11");
   app1_(ec);
   ec->stk->next = ec->stk->next->next;
 }
@@ -1952,7 +2049,7 @@ PRIVATE void app11_(pEC ec) {
 PRIVATE void unary2_(pEC ec) {
   /*   Y  Z  [P]  unary2     ==>  Y'  Z'  */
   threeparams(ec, "unary2");
-  onequote(ec, "unary2");
+  isOneQuote(ec, "unary2");
   SAVESTACK;
   ec->stk = SAVED2->next;				/* just Y on top */
   exeterm(ec, SAVED1->u.lis);			/* execute P */
@@ -1969,7 +2066,7 @@ PRIVATE void unary2_(pEC ec) {
 PRIVATE void unary3_(pEC ec) {
   /*  X Y Z [P]  unary3    ==>  X' Y' Z'	*/
   fourparams(ec, "unary3");
-  onequote(ec, "unary3");
+  isOneQuote(ec, "unary3");
   SAVESTACK;
   ec->stk = SAVED3->next;				/* just X on top */
   exeterm(ec, SAVED1->u.lis);			/* execute P */
@@ -1991,7 +2088,7 @@ PRIVATE void unary3_(pEC ec) {
 PRIVATE void unary4_(pEC ec) {
   /*  X Y Z W [P]  unary4    ==>  X' Y' Z' W'	*/
   fiveparams(ec, "unary4");
-  onequote(ec, "unary4");
+  isOneQuote(ec, "unary4");
   SAVESTACK;
   ec->stk = SAVED4->next;				/* just X on top */
   exeterm(ec, SAVED1->u.lis);			/* execute P */
@@ -2023,7 +2120,7 @@ PRIVATE void app12_(pEC ec) {
 
 PRIVATE void map_(pEC ec) {
   twoparams(ec, "map");
-  onequote(ec, "map");
+  isOneQuote(ec, "map");
   SAVESTACK;
   switch(SAVED2->op) {
     case LIST_:
@@ -2086,7 +2183,7 @@ PRIVATE void map_(pEC ec) {
 
 PRIVATE void step_(pEC ec) {
   twoparams(ec, "step");
-  onequote(ec, "step");
+  isOneQuote(ec, "step");
   SAVESTACK;
   ec->stk = ec->stk->next->next;
   switch(SAVED2->op) {
@@ -2161,7 +2258,7 @@ PRIVATE void cond_(pEC ec) {
 #define IF_TYPE(PROCEDURE,NAME,TYP)				\
     PRIVATE void PROCEDURE(pEC ec)					\
     {   twoparams(ec, NAME);					\
-	twoquotes(ec, NAME);					\
+	isTwoQuotes(ec, NAME);					\
         SAVESTACK;						\
 	ec->stk = SAVED3;						\
 	exeterm(ec, ec->stk->op == TYP ? SAVED2->u.lis : SAVED1->u.lis);\
@@ -2177,7 +2274,7 @@ IF_TYPE(iflist_,"iflist",LIST_)
 
 PRIVATE void filter_(pEC ec) {
   twoparams(ec, "filter");
-  onequote(ec, "filter");
+  isOneQuote(ec, "filter");
   SAVESTACK;
   switch (SAVED2->op) {
     case SET_ :
@@ -2347,7 +2444,7 @@ PRIVATE void split_(pEC ec) {
 PRIVATE void PROCEDURE(pEC ec)	{				\
     long result = INITIAL;					\
     twoparams(ec, NAME);						\
-    onequote(ec, NAME);						\
+    isOneQuote(ec, NAME);						\
     SAVESTACK;							\
     switch (SAVED2->op)						\
       { case SET_ :						\
@@ -2432,7 +2529,7 @@ PRIVATE void primrec_(pEC ec) {
         break;
       }
     default:
-      BADDATA("primrec");
+      badData(ec, "primrec");
   }
   exeterm(ec, SAVED2->u.lis);
   for (i = 1; i <= n; i++)
@@ -2467,7 +2564,7 @@ PRIVATE void tailrec_(pEC ec) {
 PRIVATE void construct_(pEC ec) {
   /* [P] [[P1] [P2] ..] -> X1 X2 ..	*/
   twoparams(ec, "construct");
-  twoquotes(ec, "construct");
+  isTwoQuotes(ec, "construct");
   SAVESTACK;
   ec->stk = SAVED3;			/* pop progs		*/
   ec->dump1 = LIST_NEWNODE(ec->dump2, ec->dump1);	/* save dump2		*/
@@ -2491,7 +2588,7 @@ PRIVATE void construct_(pEC ec) {
 
 PRIVATE void branch_(pEC ec) {
   threeparams(ec, "branch");
-  twoquotes(ec, "branch");
+  isTwoQuotes(ec, "branch");
   SAVESTACK;
   ec->stk = SAVED4;
   exeterm(ec, SAVED3->u.num ? SAVED2->u.lis : SAVED1->u.lis);
@@ -2501,7 +2598,7 @@ PRIVATE void branch_(pEC ec) {
 PRIVATE void while_(pEC ec)
 {
   twoparams(ec, "while");
-  twoquotes(ec, "while");
+  isTwoQuotes(ec, "while");
   SAVESTACK;
   do {
     ec->stk = SAVED3;
@@ -2521,7 +2618,7 @@ PRIVATE void while_(pEC ec)
 PRIVATE void ifte_(pEC ec) {
   int result;
   threeparams(ec, "ifte");
-  threequotes(ec, "ifte");
+  isThreeQuotes(ec, "ifte");
   SAVESTACK;
   ec->stk = SAVED4;
   exeterm(ec, SAVED3->u.lis);
@@ -2642,7 +2739,7 @@ PRIVATE void linrecaux(pEC ec) {
 
 PRIVATE void linrec_(pEC ec) {
   fourparams(ec, "linrec");
-  fourquotes(ec, "linrec");
+  isFourQuotes(ec, "linrec");
   SAVESTACK;
   ec->stk = SAVED5;
   linrecaux(ec);
@@ -2674,7 +2771,7 @@ PRIVATE void binrecaux(pEC ec) {
 PRIVATE void binrec_(pEC ec)
 {
     fourparams(ec, "binrec");
-    fourquotes(ec, "binrec");
+    isFourQuotes(ec, "binrec");
     SAVESTACK;
     ec->stk = SAVED5;
     binrecaux(ec);
@@ -2698,7 +2795,7 @@ PRIVATE void treestepaux(pEC ec, pNode item) {
 
 PRIVATE void treestep_(pEC ec) {
     twoparams(ec, "treestep");
-    onequote(ec, "treestep");
+    isOneQuote(ec, "treestep");
     SAVESTACK;
     ec->stk = SAVED3;
     treestepaux(ec, SAVED2);
@@ -2750,7 +2847,7 @@ PRIVATE void genrecaux(pEC ec) {
 
 PRIVATE void genrec_(pEC ec) {
   fourparams(ec, "genrec");
-  fourquotes(ec, "genrec");
+  isFourQuotes(ec, "genrec");
   cons_(ec);
   cons_(ec);
   cons_(ec);
@@ -3636,4 +3733,6 @@ PUBLIC const char *opername(pEC ec, int o) {
   return optable[(short)o].name;
 }
 
+/* Template expansions */
+//template void unary<double>(pEC, pNode(*constructor)(pEC, double, pNode), double);
 /* END of INTERP.C */

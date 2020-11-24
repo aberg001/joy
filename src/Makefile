@@ -1,11 +1,15 @@
 objects = main.o interp.o scan.o utils.o
-CPPFLAGS += -ferror-limit=5 -std=c++17 -frelaxed-template-template-args -g -O0
+CPPFLAGS += -ferror-limit=15 -std=c++17 -g -O0
 # --no-warnings  https://clang.llvm.org/docs/ClangCommandLineReference.html
+# -frelaxed-template-template-args
 
 joy : $(objects)
 	$(LINK.cc) -o $@ $(objects)
 
 all : joy tests
+
+ttest : ttest.o
+	$(LINK.cc) -o $@ $^
 
 tests :
 	echo "ran tests"

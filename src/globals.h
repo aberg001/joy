@@ -79,7 +79,7 @@ union Types {
   FILE *fil;
   pNode lis;
   pEntry ent;
-  void (*proc)(pEC);
+  Proc proc;
 };
 
 struct Node {
@@ -209,6 +209,17 @@ PUBLIC void readfactor(pEC ec);	/* read a JOY factor */
 PUBLIC void readterm(pEC ec);
 PUBLIC void writefactor(pEC ec, pNode n, FILE *stm);
 PUBLIC void writeterm(pEC ec, pNode n, FILE *stm);
+
+PUBLIC pNode usrNewnode(pEC ec, Types u, pNode r);
+PUBLIC pNode anonFunctNewnode(pEC ec, Types u, pNode r);
+PUBLIC pNode booleanNewnode(pEC ec, long u, pNode r);
+PUBLIC pNode charNewnode(pEC ec, long u, pNode r);
+PUBLIC pNode integerNewnode(pEC ec, long u, pNode r);
+PUBLIC pNode setNewnode(pEC ec, long u, pNode r);
+PUBLIC pNode stringNewnode(pEC ec, const char *u, pNode r);
+PUBLIC pNode listNewnode(pEC ec, pNode u, pNode r);
+PUBLIC pNode floatNewnode(pEC ec, double u, pNode r);
+PUBLIC pNode fileNewnode(pEC ec, FILE *u, pNode r);
 
 #define USR_NEWNODE(u,r)	(ec->bucket.ent = u, newnode(ec, USR_, ec->bucket, r))
 #define ANON_FUNCT_NEWNODE(u,r)	(ec->bucket.proc = u, newnode(ec, ANON_FUNCT_, ec->bucket, r))

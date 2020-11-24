@@ -417,3 +417,53 @@ PUBLIC void writeterm(pEC ec, pNode n, FILE *stm) {
       fprintf(stm, " ");
   }
 }
+
+PUBLIC pNode usrNewnode(pEC ec, pEntry u, pNode r) {
+  ec->bucket.ent = u;
+  return newnode(ec, USR_, ec->bucket, r);
+}
+
+PUBLIC pNode anonFunctNewnode(pEC ec, Proc u, pNode r) {
+  ec->bucket.proc = u;
+  return newnode(ec, ANON_FUNCT_, ec->bucket, r);
+}
+
+PUBLIC pNode booleanNewnode(pEC ec, long u, pNode r) {
+  ec->bucket.num = u;
+  return newnode(ec, BOOLEAN_, ec->bucket, r);
+}
+
+PUBLIC pNode charNewnode(pEC ec, long u, pNode r) {
+  ec->bucket.num = u;
+  return newnode(ec, CHAR_, ec->bucket, r);
+}
+
+PUBLIC pNode integerNewnode(pEC ec, long u, pNode r) {
+  ec->bucket.num = u;
+  return newnode(ec, INTEGER_, ec->bucket, r);
+}
+
+PUBLIC pNode setNewnode(pEC ec, long u, pNode r) {
+  ec->bucket.num = u;
+  return newnode(ec, SET_, ec->bucket, r);
+}
+
+PUBLIC pNode stringNewnode(pEC ec, const char *u, pNode r) {
+  ec->bucket.str = u;
+  return newnode(ec, STRING_, ec->bucket, r);
+}
+
+PUBLIC pNode listNewnode(pEC ec, pNode u, pNode r) {
+  ec->bucket.lis = u;
+  return newnode(ec, LIST_, ec->bucket, r);
+}
+
+PUBLIC pNode floatNewnode(pEC ec, double u, pNode r) {
+  ec->bucket.dbl = u;
+  return newnode(ec, FLOAT_, ec->bucket, r);
+}
+
+PUBLIC pNode fileNewnode(pEC ec, FILE *u, pNode r) {
+  ec->bucket.fil = u;
+  return newnode(ec, FILE_, ec->bucket, r);
+}
