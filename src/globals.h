@@ -50,7 +50,7 @@ typedef enum {
   MODULE,
   JPRIVATE,
   JPUBLIC,
-} Symbols;
+} Operator;
 
 #ifdef DEBUG
 #    define D(x) x
@@ -69,7 +69,7 @@ typedef union Types Types, *pTypes;
 typedef void (*Proc)(pEC);
 				/* types			*/
 typedef int Symbol;
-typedef short Operator;
+// typedef short Operator;
 
 union Types {
   long num;

@@ -280,14 +280,14 @@ PUBLIC void readfactor(pEC ec) {	/* read a JOY factor		*/
       /* end of replacement */
       if (ec->location < ec->firstlibra) {
         ec->bucket.proc = ec->location->u.proc;
-        ec->stk = newnode(ec, LOC2INT(ec->location), ec->bucket, ec->stk);
+        ec->stk = newnode(ec, static_cast<Operator>(LOC2INT(ec->location)), ec->bucket, ec->stk);
       }
       else
         ec->stk =  USR_NEWNODE(ec->location, ec->stk);
       return;
     case BOOLEAN_: case INTEGER_: case CHAR_: case STRING_:
       ec->bucket.num = ec->num;
-      ec->stk = newnode(ec, ec->sym, ec->bucket, ec->stk);
+      ec->stk = newnode(ec, static_cast<Operator>(ec->sym), ec->bucket, ec->stk);
       return;
     case FLOAT_:
       ec->stk = FLOAT_NEWNODE(ec->dbl, ec->stk);
