@@ -210,8 +210,8 @@ PUBLIC void readterm(pEC ec);
 PUBLIC void writefactor(pEC ec, pNode n, FILE *stm);
 PUBLIC void writeterm(pEC ec, pNode n, FILE *stm);
 
-PUBLIC pNode usrNewnode(pEC ec, Types u, pNode r);
-PUBLIC pNode anonFunctNewnode(pEC ec, Types u, pNode r);
+PUBLIC pNode usrNewnode(pEC ec, pEntry u, pNode r);
+PUBLIC pNode anonFunctNewnode(pEC ec, Proc u, pNode r);
 PUBLIC pNode booleanNewnode(pEC ec, long u, pNode r);
 PUBLIC pNode charNewnode(pEC ec, long u, pNode r);
 PUBLIC pNode integerNewnode(pEC ec, long u, pNode r);
@@ -221,13 +221,13 @@ PUBLIC pNode listNewnode(pEC ec, pNode u, pNode r);
 PUBLIC pNode floatNewnode(pEC ec, double u, pNode r);
 PUBLIC pNode fileNewnode(pEC ec, FILE *u, pNode r);
 
-#define USR_NEWNODE(u,r)	(ec->bucket.ent = u, newnode(ec, USR_, ec->bucket, r))
-#define ANON_FUNCT_NEWNODE(u,r)	(ec->bucket.proc = u, newnode(ec, ANON_FUNCT_, ec->bucket, r))
-#define BOOLEAN_NEWNODE(u,r)	(ec->bucket.num = u, newnode(ec, BOOLEAN_, ec->bucket, r))
-#define CHAR_NEWNODE(u,r)	(ec->bucket.num = u, newnode(ec, CHAR_, ec->bucket, r))
-#define INTEGER_NEWNODE(u,r)	(ec->bucket.num = u, newnode(ec, INTEGER_, ec->bucket, r))
-#define SET_NEWNODE(u,r)	(ec->bucket.num = u, newnode(ec, SET_, ec->bucket, r))
-#define STRING_NEWNODE(u,r)	(ec->bucket.str = u, newnode(ec, STRING_, ec->bucket, r))
-#define LIST_NEWNODE(u,r)	(ec->bucket.lis = u, newnode(ec, LIST_, ec->bucket, r))
-#define FLOAT_NEWNODE(u,r)	(ec->bucket.dbl = u, newnode(ec, FLOAT_, ec->bucket, r))
-#define FILE_NEWNODE(u,r)	(ec->bucket.fil = u, newnode(ec, FILE_, ec->bucket, r))
+// #define USR_NEWNODE(u,r)	(ec->bucket.ent = u, newnode(ec, USR_, ec->bucket, r))
+// #define ANON_FUNCT_NEWNODE(u,r)	(ec->bucket.proc = u, newnode(ec, ANON_FUNCT_, ec->bucket, r))
+// #define BOOLEAN_NEWNODE(u,r)	(ec->bucket.num = u, newnode(ec, BOOLEAN_, ec->bucket, r))
+// #define CHAR_NEWNODE(u,r)	(ec->bucket.num = u, newnode(ec, CHAR_, ec->bucket, r))
+// #define INTEGER_NEWNODE(u,r)	(ec->bucket.num = u, newnode(ec, INTEGER_, ec->bucket, r))
+// #define SET_NEWNODE(u,r)	(ec->bucket.num = u, newnode(ec, SET_, ec->bucket, r))
+// #define STRING_NEWNODE(u,r)	(ec->bucket.str = u, newnode(ec, STRING_, ec->bucket, r))
+// #define LIST_NEWNODE(u,r)	(ec->bucket.lis = u, newnode(ec, LIST_, ec->bucket, r))
+// #define FLOAT_NEWNODE(u,r)	(ec->bucket.dbl = u, newnode(ec, FLOAT_, ec->bucket, r))
+// #define FILE_NEWNODE(u,r)	(ec->bucket.fil = u, newnode(ec, FILE_, ec->bucket, r))
