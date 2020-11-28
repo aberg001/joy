@@ -213,9 +213,9 @@ PUBLIC Node *newnode(pEC ec, Operator o, Types u, Node *r) {
 
 PUBLIC void memoryindex_(pEC ec) {
 # ifndef GC_BDW
-  ec->stk = INTEGER_NEWNODE((long)MEM2INT(ec->util.memoryindex), ec->stk);
+  ec->stk = integerNewnode(ec, (long)MEM2INT(ec->util.memoryindex), ec->stk);
 # else
-  ec->stk = INTEGER_NEWNODE(0L, ec->stk);
+  ec->stk = integerNewnode(ec, 0L, ec->stk);
 # endif
 }
 
@@ -240,7 +240,7 @@ PRIVATE void readmodule_field(pEC ec) {
   if (p == NULL)
     error(ec, "no such field in module");
   D(printf("found field: %s\n", p->name));
-  ec->stk = USR_NEWNODE(p, ec->stk);
+  ec->stk = usrNewnode(ec, p, ec->stk);
   return;
 }
 
@@ -283,14 +283,14 @@ PUBLIC void readfactor(pEC ec) {	/* read a JOY factor		*/
         ec->stk = newnode(ec, static_cast<Operator>(LOC2INT(ec->location)), ec->bucket, ec->stk);
       }
       else
-        ec->stk =  USR_NEWNODE(ec->location, ec->stk);
+        ec->stk =  usrNewnode(ec, ec->location, ec->stk);
       return;
     case BOOLEAN_: case INTEGER_: case CHAR_: case STRING_:
       ec->bucket.num = ec->num;
       ec->stk = newnode(ec, static_cast<Operator>(ec->sym), ec->bucket, ec->stk);
       return;
     case FLOAT_:
-      ec->stk = FLOAT_NEWNODE(ec->dbl, ec->stk);
+      ec->stk = floatNewnode(ec, ec->dbl, ec->stk);
       return;
     case LBRACE:
       {
@@ -303,7 +303,7 @@ PUBLIC void readfactor(pEC ec) {	/* read a JOY factor		*/
             error(ec, "numeric expected in set");
           getsym(ec);
         }
-        ec->stk = SET_NEWNODE(set, ec->stk);
+        ec->stk = setNewnode(ec, set, ec->stk);
       }
       return;
     case LBRACK:
@@ -326,7 +326,7 @@ PUBLIC void readfactor(pEC ec) {	/* read a JOY factor		*/
 }
 
 PUBLIC void readterm(pEC ec) {
-  ec->stk = LIST_NEWNODE(0L, ec->stk);
+  ec->stk = listNewnode(ec, 0L, ec->stk);
   if (ec->sym <= ATOM) {
     readfactor(ec);
     ec->stk->next->u.lis = ec->stk;

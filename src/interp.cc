@@ -2800,7 +2800,7 @@ PRIVATE void treestep_(pEC ec) {
 
 PRIVATE void treerecaux(pEC ec) {
   if (ec->stk->next->op == LIST_) {
-    NULLARY(LIST_NEWNODE,ANON_FUNCT_NEWNODE(treerecaux,NULL));
+    nullary<pNode>(ec, &listNewnode, anonFunctNewnode(ec, treerecaux,NULL));
     cons_(ec);		/*  D  [[[O] C] ANON_FUNCT_]	*/
     D(printf("treerecaux: stack = "));
     D(writeterm(ec->stk, stdout); printf("\n"));
@@ -2833,8 +2833,8 @@ PRIVATE void genrecaux(pEC ec) {
     exeterm(ec, saved1(ec)->u.lis->next->u.lis);	/*	[T]	*/
   else {
     exeterm(ec, saved1(ec)->u.lis->next->next->u.lis);	/*	[R1]	*/
-    NULLARY(LIST_NEWNODE,saved1(ec)->u.lis);
-    NULLARY(LIST_NEWNODE,ANON_FUNCT_NEWNODE(genrecaux,NULL));
+    nullary<pNode>(ec, &listNewnode,saved1(ec)->u.lis);
+    nullary<pNode>(ec, &listNewnode,anonFunctNewnode(ec, genrecaux,NULL));
     cons_(ec);
     exeterm(ec, saved1(ec)->u.lis->next->next->next);	/*	[R2]	*/
   }
@@ -2858,9 +2858,9 @@ PRIVATE void treegenrecaux(pEC ec)
     saveStack(ec);				/* begin DIP	*/
     pop(ec->stk);
     exeterm(ec, saved1(ec)->u.lis->next->u.lis);	/*	[O2]	*/
-    GNULLARY(saved1(ec)->op,saved1(ec)->u);
+    gnullary(ec, saved1(ec)->op,saved1(ec)->u);
     pop(ec->dump);				/*   end DIP	*/
-    NULLARY(LIST_NEWNODE,ANON_FUNCT_NEWNODE(treegenrecaux,NULL));
+    nullary<pNode>(ec, &listNewnode, anonFunctNewnode(ec, treegenrecaux, NULL));
     cons_(ec);
     exeterm(ec, ec->stk->u.lis->u.lis->next->next); /*	[C]	*/
   }
