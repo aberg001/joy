@@ -248,19 +248,6 @@ PRIVATE pNode& saved6(pEC ec) {
   return dmp(ec)->next->next->next->next->next;
 }
 
-// #define DMP1 ec->dump1->u.lis
-// #define DMP2 ec->dump2->u.lis
-// #define DMP3 ec->dump3->u.lis
-// #define DMP4 ec->dump4->u.lis
-// #define DMP5 ec->dump5->u.lis
-// #define SAVESTACK  ec->dump = LIST_NEWNODE(ec->stk,ec->dump)
-// #define SAVED1 DMP
-// #define SAVED2 DMP->next
-// #define SAVED3 DMP->next->next
-// #define SAVED4 DMP->next->next->next
-// #define SAVED5 DMP->next->next->next->next
-// #define SAVED6 DMP->next->next->next->next->next
-
 PRIVATE void pop(pNode &N) {
   N = N->next;
 }
@@ -288,28 +275,18 @@ PRIVATE void gbinary(pEC ec, Operator type, Types value) {
 PRIVATE void gternary(pEC ec, Operator type, Types value) {
   ec->stk = newnode(ec, type, value, ec->stk->next->next->next);
 }
+PRIVATE const char *getString(pEC ec, pNode node) {
+  if (node->op == STRING_)
+    return node->u.str;
+  if (node->op == USR_)
+    return node->u.ent->name;
+  return opername(ec, node->op);
+}
 
-// #define pop(X) X = X->next
-
-#define NULLARY(CONSTRUCTOR,VALUE)                                     \
-    ec->stk = CONSTRUCTOR(VALUE, ec->stk)
-#define UNARY(CONSTRUCTOR,VALUE)                                       \
-    ec->stk = CONSTRUCTOR(VALUE, ec->stk->next)
-#define BINARY(CONSTRUCTOR,VALUE)                                      \
-    ec->stk = CONSTRUCTOR(VALUE, ec->stk->next->next)
-#define GNULLARY(TYPE,VALUE)                                    \
-    ec->stk = newnode(ec, TYPE, (VALUE), ec->stk)
-#define GUNARY(TYPE,VALUE)                                      \
-    ec->stk = newnode(ec, TYPE, (VALUE), ec->stk->next)
-#define GBINARY(TYPE,VALUE)                                     \
-    ec->stk = newnode(ec, TYPE, (VALUE), ec->stk->next->next)
-#define GTERNARY(TYPE,VALUE)					\
-    ec->stk = newnode(ec, TYPE, (VALUE), ec->stk->next->next->next)
-
-#define GETSTRING(NODE)						\
-  ( NODE->op == STRING_  ?  NODE->u.str :			\
-   (NODE->op == USR_  ?  NODE->u.ent->name :			\
-    opername(ec, NODE->op) ) )
+// #define GETSTRING(NODE)						\
+//   ( NODE->op == STRING_  ?  NODE->u.str :			\
+//    (NODE->op == USR_  ?  NODE->u.ent->name :			\
+//     opername(ec, NODE->op) ) )
 
 /* - - - -  O P E R A N D S   - - - - */
 
@@ -436,7 +413,7 @@ PRIVATE void intern_(pEC ec) {
   lookup(ec);
   if (ec->location < ec->firstlibra) {
     ec->bucket.proc = ec->location->u.proc;
-    GUNARY(static_cast<Operator>(LOC2INT(ec->location)), ec->bucket);
+    gunary(ec, static_cast<Operator>(LOC2INT(ec->location)), ec->bucket);
   }
   else 
     unary<pEntry>(ec, usrNewnode, ec->location);
@@ -462,41 +439,41 @@ PRIVATE void pop_(pEC ec) {
 PRIVATE void swap_(pEC ec) {
   hasTwoParams(ec, "swap");
   saveStack(ec);
-  GBINARY(saved1(ec)->op, saved1(ec)->u);
-  GNULLARY(saved2(ec)->op, saved2(ec)->u);
+  gbinary(ec, saved1(ec)->op, saved1(ec)->u);
+  gnullary(ec, saved2(ec)->op, saved2(ec)->u);
   pop(ec->dump);
 }
 
 PRIVATE void rollup_(pEC ec) {
   hasThreeParams(ec, "rollup");
   saveStack(ec);
-  GTERNARY(saved1(ec)->op, saved1(ec)->u);
-  GNULLARY(saved3(ec)->op, saved3(ec)->u);
-  GNULLARY(saved2(ec)->op, saved2(ec)->u);
+  gternary(ec, saved1(ec)->op, saved1(ec)->u);
+  gnullary(ec, saved3(ec)->op, saved3(ec)->u);
+  gnullary(ec, saved2(ec)->op, saved2(ec)->u);
   pop(ec->dump);
 }
 
 PRIVATE void rolldown_(pEC ec) {
   hasThreeParams(ec, "rolldown");
   saveStack(ec);
-  GTERNARY(saved2(ec)->op, saved2(ec)->u);
-  GNULLARY(saved1(ec)->op, saved1(ec)->u);
-  GNULLARY(saved3(ec)->op, saved3(ec)->u);
+  gternary(ec, saved2(ec)->op, saved2(ec)->u);
+  gnullary(ec, saved1(ec)->op, saved1(ec)->u);
+  gnullary(ec, saved3(ec)->op, saved3(ec)->u);
   pop(ec->dump);
 }
 
 PRIVATE void rotate_(pEC ec) {
   hasThreeParams(ec, "rotate");
   saveStack(ec);
-  GTERNARY(saved1(ec)->op, saved1(ec)->u);
-  GNULLARY(saved2(ec)->op, saved2(ec)->u);
-  GNULLARY(saved3(ec)->op, saved3(ec)->u);
+  gternary(ec, saved1(ec)->op, saved1(ec)->u);
+  gnullary(ec, saved2(ec)->op, saved2(ec)->u);
+  gnullary(ec, saved3(ec)->op, saved3(ec)->u);
   pop(ec->dump);
 }
 
 PRIVATE void dup_(pEC ec) {
   hasOneParam(ec, "dup");
-  GNULLARY(ec->stk->op, ec->stk->u);
+  gnullary(ec, ec->stk->op, ec->stk->u);
 }
 
 PRIVATE void dipped(pEC ec, const char *name,
@@ -534,7 +511,7 @@ PRIVATE void rotated_(pEC ec) {
 //     SAVESTACK;                                                  \
 //     pop(ec->stk);                                                   \
 //     ARGUMENT(ec);                                                 \
-//     GNULLARY(SAVED1->op, SAVED1->u);                             \
+//     gnullary(ec, SAVED1->op, SAVED1->u);                             \
 //     pop(ec->dump);                                                  \
 // }
 // DIPPED(popd_, "popd", HASTWOPARAMS, pop_)
@@ -1003,7 +980,7 @@ PRIVATE void PROCEDURE(pEC ec)	{				\
 	default:						\
 	    if (ec->stk->next->op == LIST_)				\
 	      badData(ec, NAME);					\
-	    comp = strcmp(GETSTRING(ec->stk->next), GETSTRING(ec->stk))	\
+	    comp = strcmp(getString(ec, ec->stk->next), getString(ec, ec->stk))	\
 		   OPR 0;					\
 	    break; }						\
     ec->stk = CONSTRUCTOR(ec, comp, ec->stk->next->next); }
@@ -1182,7 +1159,7 @@ PRIVATE void first_(pEC ec) {
   switch (ec->stk->op) {
     case LIST_:
       checkEmptyList(ec, ec->stk->u.lis, "first");
-      GUNARY(ec->stk->u.lis->op,ec->stk->u.lis->u);
+      gunary(ec, ec->stk->u.lis->op,ec->stk->u.lis->u);
       return;
     case STRING_:
       checkEmptyString(ec, ec->stk->u.str, "first");
@@ -1318,7 +1295,7 @@ PRIVATE long equal_aux(pEC ec, pNode n1, pNode n2) {
       if (n2->op != LIST_) return 0;
       return equal_list_aux(ec, n1->u.lis, n2->u.lis);
     default:
-      return strcmp(GETSTRING(n1),GETSTRING(n2)) == 0; 
+      return strcmp(getString(ec, n1),getString(ec, n2)) == 0;
   }
 }
 
@@ -1929,7 +1906,7 @@ PRIVATE void dip_(pEC ec) {
     saveStack(ec);
     ec->stk = ec->stk->next->next;
     exeterm(ec, saved1(ec)->u.lis);
-    GNULLARY(saved2(ec)->op,saved2(ec)->u);
+    gnullary(ec, saved2(ec)->op,saved2(ec)->u);
     pop(ec->dump);
 }
 
@@ -2187,7 +2164,7 @@ PRIVATE void step_(pEC ec) {
       {
         ec->dump1 = newnode(ec, LIST_, saved2(ec)->u, ec->dump1);
         while (dmp1(ec) != NULL) {
-          GNULLARY(dmp1(ec)->op,dmp1(ec)->u);
+          gnullary(ec, dmp1(ec)->op,dmp1(ec)->u);
           exeterm(ec, saved1(ec)->u.lis);
           dmp1(ec) = dmp1(ec)->next;
         }
@@ -2757,7 +2734,7 @@ PRIVATE void binrecaux(pEC ec) {
     ec->dump2 = newnode(ec, ec->stk->op,ec->stk->u,ec->dump2);
     pop(ec->stk);
     binrecaux(ec);			/* first */
-    GNULLARY(ec->dump2->op,ec->dump2->u);
+    gnullary(ec, ec->dump2->op,ec->dump2->u);
     pop(ec->dump2);
     binrecaux(ec);			/* second */
     exeterm(ec, saved1(ec)->u.lis);		/* combine */
@@ -2776,7 +2753,7 @@ PRIVATE void binrec_(pEC ec)
 
 PRIVATE void treestepaux(pEC ec, pNode item) {
   if (item->op != LIST_) {
-    GNULLARY(item->op,item->u);
+    gnullary(ec, item->op,item->u);
     exeterm(ec, saved1(ec)->u.lis);
   }
   else {
