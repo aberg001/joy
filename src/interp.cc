@@ -919,7 +919,7 @@ PREDSUCC(succ_, "succ", +)
 #define PLUSMINUS(PROCEDURE, NAME, OPER)				\
 PRIVATE void PROCEDURE(pEC ec)	{				\
     hasTwoParams(ec, NAME);						\
-    float_p(ec, [](double a, double b) -> double { return a OPER b; }); \
+    if (float_p(ec, [](double a, double b) -> double { return a OPER b; })) return; \
     hasInteger(ec, NAME);						\
     hasNumeric2(ec, NAME);						\
     if (ec->stk->next->op == CHAR_)					\
