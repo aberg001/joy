@@ -1,0 +1,467 @@
+
+globals.h,3722
+#define SHELLESCAPE	4,46
+#define INPSTACKMAX	5,70
+#define INPLINEMAX	6,93
+#define ALEN	7,116
+#define HASHSIZE	8,133
+#define SYMTABMAX	9,152
+#define DISPLAYMAX	10,175
+#    define MEMORYMAX	12,244
+#    define MEMORYMAX	14,279
+#define INIECHOFLAG	16,311
+#define INIAUTOPUT	17,333
+#define INITRACEGC	18,354
+#define SETSIZE	20,408
+#define MAXINT	21,428
+  ILLEGAL_ 24,501
+  COPIED_,25,517
+  USR_,26,528
+  ANON_FUNCT_,27,536
+  BOOLEAN_,28,551
+  CHAR_,29,563
+  INTEGER_,30,572
+  SET_,31,584
+  STRING_,32,592
+  LIST_,33,603
+  FLOAT_,34,612
+  FILE_,35,622
+  LBRACK 36,631
+  LBRACE,37,647
+  LPAREN,38,657
+  ATOM 39,667
+  RBRACK 40,712
+  RPAREN 41,729
+  RBRACE 42,746
+  PERIOD,43,763
+  SEMICOL,44,773
+  LIBRA 45,784
+  EQDEF,46,800
+  HIDE,47,809
+  IN,48,817
+  END,49,823
+  MODULE,50,830
+  JPRIVATE,51,840
+  JPUBLIC,52,852
+} Operator;53,863
+#    define D(56,889
+#    define D(58,914
+#define PRIVATE 61,939
+#define PUBLIC62,962
+typedef struct ExecutionContext ExecutionContext,65,993
+typedef struct ExecutionContext ExecutionContext, EC,65,993
+typedef struct ExecutionContext ExecutionContext, EC, *pEC;pEC65,993
+typedef struct Node Node,66,1053
+typedef struct Node Node, *pNode;pNode66,1053
+typedef struct Entry Entry,67,1087
+typedef struct Entry Entry, *pEntry;pEntry67,1087
+typedef union Types Types,68,1124
+typedef union Types Types, *pTypes;pTypes68,1124
+typedef void (*Proc)Proc69,1160
+typedef int Symbol;71,1205
+union Types 74,1253
+  long num;75,1267
+  long set;76,1279
+  const char *str;str77,1291
+  double dbl;78,1310
+  FILE *fil;fil79,1324
+  pNode lis;80,1337
+  pEntry ent;81,1350
+  Proc proc;82,1364
+struct Node 85,1381
+  Operator op;86,1395
+  Types u;87,1410
+  struct Node *next;next88,1421
+struct Entry 91,1446
+  const char *name;name92,1461
+  int is_module;93,1481
+    pNode body;95,1508
+    struct Entry *module_fields;module_fields96,1524
+    Proc proc;97,1557
+  } u;98,1572
+  struct Entry *next;next99,1579
+struct ExecutionContext 102,1605
+  FILE *srcfile;srcfile103,1631
+  int g_argc;104,1648
+  char **g_argv;g_argv105,1662
+  int echoflag;106,1679
+  int autoput;107,1695
+  int undeferror;108,1710
+  int tracegc;109,1728
+  int startclock,110,1743
+  int startclock,gc_clock;110,1743
+  int ch;111,1783
+  Symbol sym;112,1810
+  long num;113,1824
+  double dbl;114,1836
+  char id[id115,1850
+  int hashvalue;116,1867
+  Types bucket;117,1884
+  int display_enter;118,1933
+  int display_lookup;119,1954
+  struct Scanner 121,1977
+    FILE *infile[infile122,1996
+    int ilevel;123,2027
+    int linenumber;124,2043
+    char linbuf[linbuf125,2063
+    int linelength,126,2092
+    int linelength, currentcolumn;126,2092
+    int errorcount;127,2127
+  } scanner;128,2147
+  struct Util 130,2161
+    Node memory[memory132,2193
+    pNode memoryindex,133,2221
+      mem_low,134,2244
+      mem_mid;135,2259
+    int direction;136,2274
+    int nodesinspected,137,2293
+    int nodesinspected, nodescopied;137,2293
+    int start_gc_clock;138,2330
+  } util;141,2363
+    symtab[symtab144,2405
+    hashentry[hashentry146,2437
+    localentry,147,2462
+    symtabindex,148,2478
+    display[display149,2495
+    firstlibra,150,2520
+    location;151,2556
+    prog,158,2674
+    prog, stk,158,2674
+    prog, stk, conts,158,2674
+    dump,159,2696
+    dump, dump1,159,2696
+    dump, dump1, dump2,159,2696
+    dump, dump1, dump2, dump3,159,2696
+    dump, dump1, dump2, dump3, dump4,159,2696
+    dump, dump1, dump2, dump3, dump4, dump5;159,2696
+  jmp_buf begin,161,2742
+  jmp_buf begin, fail;161,2742
+#define LOC2INT(164,2769
+#define INT2LOC(165,2835
+#define MEM2INT(168,2908
+#define INT2MEM(169,2978
+
+interp.cc,8234
+#    define malloc 12,196
+#    define realloc 13,232
+#    define free(14,263
+PRIVATE void hasOneParam(29,871
+PRIVATE void hasTwoParams(33,991
+PRIVATE void hasThreeParams(37,1138
+PRIVATE void hasFourParams(42,1326
+PRIVATE void hasFiveParams(48,1555
+PRIVATE void hasOneQuote(56,1834
+PRIVATE void hasTwoQuotes(60,1972
+PRIVATE void hasThreeQuotes(65,2145
+PRIVATE void hasFourQuotes(70,2326
+PRIVATE void hasSame2types(75,2515
+PRIVATE void hasString(79,2672
+PRIVATE void hasString2(83,2790
+PRIVATE void hasInteger(87,2935
+PRIVATE void hasInteger2(91,3056
+PRIVATE void hasCharacter(95,3204
+PRIVATE void hasIntegers2(99,3326
+PRIVATE void isNumerictype(103,3487
+PRIVATE void hasNumeric2(108,3669
+PRIVATE bool isFloatable(112,3846
+PRIVATE bool isFloatable2(115,3944
+PRIVATE void hasFloat(120,4189
+PRIVATE void hasFloat2(124,4310
+PRIVATE double floatVal(129,4510
+PRIVATE double floatVal2(134,4655
+PRIVATE bool float_u(139,4819
+PRIVATE bool float_p(146,4995
+PRIVATE void hasFile(157,5357
+PRIVATE void checkZero(161,5495
+PRIVATE void hasList(165,5620
+PRIVATE void hasList2(169,5732
+PRIVATE void hasUserdef(173,5871
+PRIVATE void checkList(177,6005
+PRIVATE void checkSetMember(181,6134
+PRIVATE void checkEmptySet(186,6329
+PRIVATE void checkEmptyString(190,6454
+PRIVATE void checkEmptyList(194,6602
+PRIVATE void indexTooLarge(198,6735
+PRIVATE void badAggregate(201,6832
+PRIVATE void badData(204,6934
+PRIVATE pNode& dmp(208,7027
+PRIVATE pNode& dmp1(211,7084
+PRIVATE pNode& dmp2(214,7143
+PRIVATE pNode& dmp3(217,7202
+PRIVATE pNode& dmp4(220,7261
+PRIVATE pNode& dmp5(223,7320
+PRIVATE pNode saveStack(227,7380
+PRIVATE pNode& saved1(232,7505
+PRIVATE pNode& saved2(235,7557
+PRIVATE pNode& saved3(238,7615
+PRIVATE pNode& saved4(241,7679
+PRIVATE pNode& saved5(244,7749
+PRIVATE pNode& saved6(247,7825
+PRIVATE void pop(251,7908
+PRIVATE void pop(254,7954
+template<typename T> PUBLIC void nullary(257,8001
+template<typename T> PUBLIC void unary(260,8145
+template<typename T> PUBLIC void binary(263,8293
+PRIVATE void gnullary(266,8448
+PRIVATE void gunary(269,8557
+PRIVATE void gbinary(272,8670
+PRIVATE void gternary(275,8790
+PRIVATE const char *getString(getString278,8917
+PRIVATE void true_(319,10552
+PRIVATE void false_(322,10624
+PRIVATE void setsize_(325,10697
+PRIVATE void maxint_(328,10796
+PRIVATE void symtabmax_(331,10893
+PRIVATE void memorymax_(334,10996
+PRIVATE void stdin_(337,11099
+PRIVATE void stdout_(340,11174
+PRIVATE void stderr_(343,11251
+PRIVATE void dump_(346,11328
+PRIVATE void conts_(349,11404
+PRIVATE void symtabindex_(352,11529
+PRIVATE void rand_(355,11649
+PRIVATE void echo_(358,11744
+PRIVATE void autoput_(361,11845
+PRIVATE void undeferror_(364,11948
+PRIVATE void clock_(367,12057
+PRIVATE void time_(370,12158
+PRIVATE void argc_(373,12257
+PUBLIC void stack_(377,12357
+PRIVATE void id_(383,12482
+PRIVATE void unstack_(386,12532
+PRIVATE void name_(399,12747
+PRIVATE void intern_(405,12926
+PRIVATE void getenv_(422,13392
+PRIVATE void body_(428,13548
+PRIVATE void pop_(434,13690
+PRIVATE void swap_(439,13763
+PRIVATE void rollup_(447,13950
+PRIVATE void rolldown_(456,14191
+PRIVATE void rotate_(465,14436
+PRIVATE void dup_(474,14677
+PRIVATE void dipped(479,14775
+PRIVATE void popd_(489,15063
+PRIVATE void dupd_(492,15138
+PRIVATE void swapd_(495,15213
+PRIVATE void rolldownd_(498,15294
+PRIVATE void rollupd_(501,15385
+PRIVATE void rotated_(504,15470
+#define ANDORXOR(526,16473
+#define ORDCHR(546,17162
+ANDORXOR(ORDCHR539,17044
+PRIVATE double fsgn(575,17877
+PRIVATE void sign_(585,18012
+PRIVATE void neg_(609,18539
+PRIVATE void mul_(629,19108
+PRIVATE void divide_(637,19346
+PRIVATE void rem_(648,19748
+PRIVATE void div_(657,19970
+PRIVATE void strtol_(667,20251
+PRIVATE void strtod_(677,20508
+PRIVATE void format_(683,20664
+PRIVATE void formatf_(709,21364
+#define UNMKTIME(737,22079
+UNMKTIME(764,23195
+PRIVATE void mktime_(812,24185
+PRIVATE void strftime_(821,24376
+#define UFLOAT(841,24866
+#define BFLOAT(863,25501
+UFLOAT(BFLOAT847,25089
+PRIVATE void modf_(881,26018
+PRIVATE void ldexp_(890,26233
+PRIVATE void trunc_(901,26489
+#define PREDSUCC(909,26674
+#define PLUSMINUS(919,27043
+#define MAXMIN(931,27574
+#define COMPREL(951,28318
+PREDSUCC(COMPREL916,26988
+PRIVATE void fclose_(1006,30062
+PRIVATE void fflush_(1018,30295
+PRIVATE void fremove_(1025,30420
+PRIVATE void frename_(1032,30591
+#define FILEGET(1040,30815
+FILEGET(1046,31034
+PRIVATE void fput_(1070,31772
+PRIVATE void fputch_(1081,32035
+PRIVATE void fputchars_(1092,32240
+PRIVATE void fread_(1103,32581
+PRIVATE void fwrite_(1121,33116
+PRIVATE void fseek_(1139,33640
+PRIVATE void first_(1157,34020
+PRIVATE void rest_(1181,34655
+PRIVATE void uncons_(1208,35346
+PRIVATE void unswons_(1240,36250
+PRIVATE int equal_list_aux(1275,37231
+PRIVATE long equal_aux(1283,37472
+PRIVATE void equal_(1302,38082
+#define INHAS(1306,38219
+#define OF_AT(1334,39050
+OF_AT(1367,40196
+PRIVATE void case_(1378,40551
+PRIVATE void opcase_(1402,41153
+#define CONS_SWONS(1414,41521
+CONS_SWONS(1438,42328
+PRIVATE void take_(1479,43367
+PRIVATE void concat_(1550,45433
+PRIVATE void enconcat_(1601,47023
+PRIVATE void null_(1607,47164
+PRIVATE void not_(1624,47639
+PRIVATE void size_(1641,48089
+PRIVATE void small_(1669,48640
+#define TYPE(1698,49383
+TYPE(1702,49571
+PRIVATE void put_(1720,50046
+PRIVATE void putch_(1726,50190
+PRIVATE void putchars_(1731,50338
+PRIVATE void setecho_(1736,50469
+PRIVATE void setautoput_(1741,50603
+PRIVATE void setundeferror_(1746,50742
+PRIVATE void settracegc_(1751,50890
+PRIVATE void srand_(1756,51029
+PRIVATE void include_(1761,51175
+PRIVATE void system_(1766,51305
+#define USETOP(1772,51427
+PRIVATE void undefs_(1786,52340
+PRIVATE void argv_(1797,52617
+PRIVATE void get_(1808,52885
+PUBLIC void dummy_(1813,52948
+#define HELP(1817,53003
+HELP(1830,53452
+PRIVATE void x_(1888,55050
+PRIVATE void i_(1894,55164
+PRIVATE void dip_(1903,55337
+PRIVATE void n_ary(1913,55582
+PRIVATE void nullary_(1925,55965
+PRIVATE void unary_(1928,56046
+PRIVATE void binary_(1931,56124
+PRIVATE void ternary_(1934,56206
+#define N_ARY(1938,56290
+PRIVATE void times_(1965,57052
+PRIVATE void infra_(1978,57336
+PRIVATE void app1_(1989,57600
+PRIVATE void cleave_(1998,57771
+PRIVATE void app11_(2015,58324
+PRIVATE void unary2_(2022,58468
+PRIVATE void unary3_(2039,59143
+PRIVATE void unary4_(2061,60066
+PRIVATE void app12_(2087,61239
+PRIVATE void map_(2094,61415
+PRIVATE void step_(2157,63459
+PRIVATE void fold_(2199,64489
+PRIVATE void cond_(2205,64578
+#define IF_TYPE(2231,65235
+IF_TYPE(2239,65539
+PRIVATE void split_(2316,68058
+#define SOMEALL(2416,71361
+SOMEALL(2457,72828
+PRIVATE void tailrecaux(2513,74105
+PRIVATE void tailrec_(2529,74439
+PRIVATE void construct_(2537,74583
+PRIVATE void branch_(2562,75470
+PRIVATE void while_(2571,75698
+PRIVATE void ifte_(2591,76086
+PRIVATE void condlinrecaux(2604,76398
+PRIVATE void condlinrec_(2635,77218
+PRIVATE void condnestrecaux(2645,77448
+PRIVATE void condnestrec_(2688,78584
+PRIVATE void linrecaux(2698,78819
+PRIVATE void linrec_(2713,79172
+PRIVATE void binrecaux(2722,79343
+PRIVATE void binrec_(2744,79924
+PRIVATE void treestepaux(2754,80107
+PRIVATE void treestep_(2769,80450
+PRIVATE void treerecaux(2778,80650
+PRIVATE void treerec_(2793,81078
+PRIVATE void genrecaux(2800,81254
+PRIVATE void genrec_(2821,81908
+PRIVATE void treegenrecaux(2830,82060
+PRIVATE void treegenrec_(2851,82692
+PRIVATE void plain_manual_(2860,82918
+PRIVATE void html_manual_(2864,82980
+PRIVATE void latex_manual_(2868,83041
+PRIVATE void manual_list_aux_(2872,83103
+static struct {const char *name;name2879,83227
+static struct {const char *name; void (*proc) (pEC ec); const char *messg1,messg12879,83227
+static struct {const char *name; void (*proc) (pEC ec); const char *messg1, *messg2;messg22879,83227
+    optable[optable2880,83314
+PUBLIC void inisymboltable(3578,109037
+PRIVATE void helpdetail_(3602,109878
+#define PLAIN 3626,110416
+#define HTML 3627,110443
+#define LATEX 3628,110469
+#define HEADER(3629,110496
+PRIVATE void make_manual(3637,110739
+PRIVATE void manual_list_(3688,112171
+PUBLIC const char *opername(opername3705,112587
+
+main.cc,450
+#define ALLOC8,117
+PRIVATE void enterglobal(11,153
+PUBLIC void lookup(23,644
+PRIVATE void enteratom(43,1269
+PRIVATE void definition(62,1892
+PRIVATE void defsequence(104,2916
+PRIVATE void compound_def(113,3043
+PUBLIC void abortexecution_(181,4922
+PUBLIC void fail_(187,5082
+PUBLIC void execerror(192,5138
+static int quit_quiet 198,5296
+PUBLIC void quit_(200,5383
+static int mustinclude 214,5716
+#define CHECK(216,5745
+int main(221,5888
+
+scan.cc,289
+#    define malloc 10,176
+#define EOLN 13,220
+PUBLIC void inilinebuffer(15,239
+PUBLIC void putline(20,360
+PRIVATE void getch(26,532
+PUBLIC int endofbuffer(52,1444
+PUBLIC void error(56,1544
+PUBLIC int doinclude(69,1875
+PRIVATE char specialchar(80,2209
+PUBLIC void getsym(117,3012
+
+ttest.cc,328
+struct ctx 3,20
+    int a;4,33
+struct node 6,47
+    int b;7,61
+    struct node *next;next8,72
+typedef struct ctx ctx,11,99
+typedef struct ctx ctx, *pctx;pctx11,99
+typedef struct node node,12,130
+typedef struct node node, *pnode;pnode12,130
+template<typename T> void myfn(14,165
+node* thefn(21,339
+int main(25,429
+
+utils.cc,897
+#define MEM_HIGH 11,161
+PUBLIC void inimem0(14,201
+PUBLIC void inimem1(20,341
+PUBLIC void inimem2(28,569
+PUBLIC void printnode(47,1268
+PRIVATE Node *copy(copy58,1532
+PRIVATE void cop(117,2959
+PRIVATE void gc1(133,3314
+PRIVATE void gc2(169,4534
+PUBLIC void gc_(183,4997
+PUBLIC Node *newnode(newnode192,5132
+PUBLIC void memoryindex_(214,5638
+PRIVATE void readmodule_field(222,5830
+PUBLIC void readfactor(247,6572
+PUBLIC void readterm(328,9014
+PUBLIC void writefactor(350,9580
+PUBLIC void writeterm(412,11154
+PUBLIC pNode usrNewnode(421,11325
+PUBLIC pNode anonFunctNewnode(426,11446
+PUBLIC pNode booleanNewnode(431,11579
+PUBLIC pNode charNewnode(436,11706
+PUBLIC pNode integerNewnode(441,11827
+PUBLIC pNode setNewnode(446,11954
+PUBLIC pNode stringNewnode(451,12073
+PUBLIC pNode listNewnode(456,12205
+PUBLIC pNode floatNewnode(461,12327
+PUBLIC pNode fileNewnode(466,12452

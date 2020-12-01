@@ -207,7 +207,7 @@ PUBLIC Node *newnode(pEC ec, Operator o, Types u, Node *r) {
   p->op = o;
   p->u = u;
   p->next = r;
-  D(printnode(p));
+  D(printnode(ec, p));
   return p;
 }
 
@@ -221,7 +221,7 @@ PUBLIC void memoryindex_(pEC ec) {
 
 PRIVATE void readmodule_field(pEC ec) {
   Entry *p;
-  D(printf("Module %s at %d\n", ec->location->name, (long)ec->location));
+  D(printf("Module %s at %ld\n", ec->location->name, (long)ec->location));
   D(p = ec->location->u.module_fields);
   D(while (p) { printf("%s\n", p->name); p = p->next; });
   p = ec->location->u.module_fields;

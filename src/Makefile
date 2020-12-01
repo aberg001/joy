@@ -2,6 +2,7 @@ objects = main.o interp.o scan.o utils.o
 CPPFLAGS += -ferror-limit=15 -std=c++17 -g -O0
 # --no-warnings  https://clang.llvm.org/docs/ClangCommandLineReference.html
 # -frelaxed-template-template-args
+# -DDEBUG
 
 joy : $(objects)
 	$(LINK.cc) -o $@ $(objects)

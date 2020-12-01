@@ -1866,7 +1866,7 @@ start:
         break;
       default:
         D(printf("trying to do "));
-        D(writefactor(ec->dump1, stdout));
+        D(writefactor(ec, ec->dump1, stdout));
         (*(stepper->u.proc))(ec);
         break;
     }
@@ -1881,7 +1881,7 @@ start:
 
   pop(ec->conts);
   D(printf("after execution, ec->stk is:\n"));
-  D(writeterm(ec->stk, stdout));
+  D(writeterm(ec, ec->stk, stdout));
   D(printf("\n"));
 }
 
@@ -2104,7 +2104,7 @@ PRIVATE void map_(pEC ec) {
         while (dmp1(ec) != NULL) {
           ec->stk = newnode(ec, dmp1(ec)->op, dmp1(ec)->u,saved3(ec));
           exeterm(ec, saved1(ec)->u.lis);
-          D(printf("map: "); writefactor(ec->stk, stdout); printf("\n"));
+          D(printf("map: "); writefactor(ec, ec->stk, stdout); printf("\n"));
           if (dmp2(ec) == NULL)	{		/* first */
             dmp2(ec) = newnode(ec, ec->stk->op,ec->stk->u,NULL);
             dmp3(ec) = dmp2(ec);
@@ -2288,7 +2288,7 @@ PRIVATE void filter_(pEC ec) {
         while (dmp1(ec) != NULL) {
           ec->stk = newnode(ec, dmp1(ec)->op,dmp1(ec)->u,saved3(ec));
           exeterm(ec, saved1(ec)->u.lis);
-          D(printf("filter: "); writefactor(ec->stk, stdout); printf("\n"));
+          D(printf("filter: "); writefactor(ec, ec->stk, stdout); printf("\n"));
             if (ec->stk->u.num) {				/* test */
               if (dmp2(ec) == NULL) {		/* first */
                 dmp2(ec) = newnode(ec, dmp1(ec)->op, dmp1(ec)->u,NULL);
@@ -2369,7 +2369,7 @@ PRIVATE void split_(pEC ec) {
         {
           ec->stk = newnode(ec, dmp1(ec)->op,dmp1(ec)->u, saved3(ec));
           exeterm(ec, saved1(ec)->u.lis);
-          D(printf("split: "); writefactor(ec->stk, stdout); printf("\n"));
+          D(printf("split: "); writefactor(ec, ec->stk, stdout); printf("\n"));
           if (ec->stk->u.num)				/* pass */
             if (dmp2(ec) == NULL) {		/* first */
               dmp2(ec) =
@@ -2780,7 +2780,7 @@ PRIVATE void treerecaux(pEC ec) {
     nullary<pNode>(ec, &listNewnode, anonFunctNewnode(ec, treerecaux,NULL));
     cons_(ec);		/*  D  [[[O] C] ANON_FUNCT_]	*/
     D(printf("treerecaux: stack = "));
-    D(writeterm(ec->stk, stdout); printf("\n"));
+    D(writeterm(ec, ec->stk, stdout); printf("\n"));
     exeterm(ec, ec->stk->u.lis->u.lis->next);
   }
   else {
@@ -2793,14 +2793,14 @@ PRIVATE void treerecaux(pEC ec) {
 PRIVATE void treerec_(pEC ec) {
   hasThreeParams(ec, "treerec");
   cons_(ec);
-  D(printf("deep: stack = "); writeterm(ec->stk, stdout); printf("\n"));
+  D(printf("deep: stack = "); writeterm(ec, ec->stk, stdout); printf("\n"));
   treerecaux(ec);
 }
 
 PRIVATE void genrecaux(pEC ec) {
   int result;
   D(printf("genrecaux: stack = "));
-  D(writeterm(ec->stk, stdout); printf("\n"));
+  D(writeterm(ec, ec->stk, stdout); printf("\n"));
   saveStack(ec);
   pop(ec->stk);
   exeterm(ec, saved1(ec)->u.lis->u.lis);			/*	[I]	*/
@@ -2830,7 +2830,7 @@ PRIVATE void genrec_(pEC ec) {
 PRIVATE void treegenrecaux(pEC ec)
 {
   D(printf("treegenrecaux: stack = "));
-  D(writeterm(ec->stk, stdout); printf("\n"));
+  D(writeterm(ec, ec->stk, stdout); printf("\n"));
   if (ec->stk->next->op == LIST_) {
     saveStack(ec);				/* begin DIP	*/
     pop(ec->stk);
@@ -2852,7 +2852,7 @@ PRIVATE void treegenrec_(pEC ec) {
   /* T [O1] [O2] [C]	*/
   hasFourParams(ec, "treegenrec");
   cons_(ec); cons_(ec);
-  D(printf("treegenrec: stack = "); writeterm(ec->stk, stdout); printf("\n"));
+  D(printf("treegenrec: stack = "); writeterm(ec, ec->stk, stdout); printf("\n"));
   treegenrecaux(ec);
 }
 

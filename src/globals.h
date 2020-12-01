@@ -190,7 +190,7 @@ PUBLIC void inisymboltable(pEC ec);	/* initialise */
 PUBLIC const char *opername(pEC ec, int o);
 PUBLIC void lookup(pEC ec);
 PUBLIC void abortexecution_(pEC ec);
-PUBLIC void execerror(pEC ec, const char *message, const char *op);
+PUBLIC void execerror(pEC ec, const char *message, const char *op, ...);
 PUBLIC void quit_(pEC ec);
 PUBLIC void inilinebuffer(pEC ec);
 PUBLIC void putline(pEC ec);

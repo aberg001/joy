@@ -2,6 +2,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdarg.h>
 #include <stdlib.h>
 #include <setjmp.h>
 #include <time.h>
@@ -92,7 +93,7 @@ PRIVATE void definition(pEC ec)
     error(ec, " == expected in definition");
   readterm(ec);
 D(  printf("assigned this body: "); )
-D(  writeterm(ec->stk->u.lis, stdout); )
+D(  writeterm(ec, ec->stk->u.lis, stdout); )
 D(  printf("\n"); )
   if (here != NULL) {
     here->u.body = ec->stk->u.lis;
@@ -189,10 +190,22 @@ PUBLIC void fail_(pEC ec)
     longjmp(ec->fail,1);
 }
 
-PUBLIC void execerror(pEC ec, const char *message, const char *op)
+// PUBLIC void execerror(pEC ec, const char *message, const char *op)
+// {
+//     printf("run time error: %s needed for %s\n",message,op);
+//     abortexecution_(ec);
+// }
+
+PUBLIC void execerror(pEC ec, const char *message, const char *op, ...)
 {
-    printf("run time error: %s needed for %s\n",message,op);
-    abortexecution_(ec);
+  va_list arg_ptr;
+  va_start(arg_ptr, op);
+  char * buf = static_cast<char *>(alloca(30 + strlen(message) + strlen(op)));
+  sprintf(buf, "run time error: %s needed for %s",message,op);
+  vprintf(buf, arg_ptr);
+  printf("\n");
+  abortexecution_(ec);
+  va_end(arg_ptr);
 }
 
 static int quit_quiet = 1;
@@ -264,9 +277,12 @@ int main(int argc, char **argv)
   D(printf("starting main loop\n"));
   while (1) {
     if (mustinclude) {
+      FILE *usrlib;
       mustinclude = 0;
-      if (fopen("usrlib.joy","r"))
+      if ((usrlib = fopen("usrlib.joy","r"))) {
         doinclude(ec, "usrlib.joy");
+        fclose(usrlib);
+      }
     }
     getsym(ec);
 
@@ -277,7 +293,7 @@ int main(int argc, char **argv)
     }
     else { 
       readterm(ec);
-      D(printf("program is: "); writeterm(ec->stk->u.lis, stdout); printf("\n"));
+      D(printf("program is: "); writeterm(ec, ec->stk->u.lis, stdout); printf("\n"));
       ec->prog = ec->stk->u.lis;
       ec->stk = ec->stk->next;
       ec->conts = NULL;

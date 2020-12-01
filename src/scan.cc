@@ -68,12 +68,12 @@ PUBLIC void error(pEC ec, const char *message) {
 
 PUBLIC int doinclude(pEC ec, const char *filnam) {
   if (ec->scanner.ilevel+1 == INPSTACKMAX)
-    execerror(ec, "fewer include files","include");
+    execerror(ec, "fewer include files", "include");
   if ((ec->scanner.infile[ec->scanner.ilevel+1] = fopen(filnam,"r")) != NULL) {
     ec->scanner.ilevel++;
     return(1);
   }
-  execerror(ec, "valid file name","include");
+  execerror(ec, "valid file name (%s)", "include", filnam);
   return 0;
 }
 
