@@ -2,13 +2,13 @@
 # Combinator
 
 
-### i      :  [P]  ->  ...
-Executes P. So, [P] i  ==  P.
+### i      :  `[P]`  ->  `...`
+Executes `P`. So, `[P] i`  ==  `P`.
 
 ### x      :  [P]i  ->  ...
 Executes P without popping [P]. So, [P] x  ==  [P] P.
 
-### dip      :  X [P]  ->  ... X
+### dip      :  `X [P]`  ->  `... X`
 Saves X, executes P, pushes X back.
 
 ### app1      :  X [P]  ->  R
@@ -68,8 +68,8 @@ Executes P1 and P2, each with X on top, producing two results.
 ### branch      :  B [T] [F]  ->  ...
 If B is true, then executes T else executes F.
 
-### ifte      :  [B] [T] [F]  ->  ...
-Executes B. If that yields true, then executes T else executes F.
+### ifte      :  `[B] [T] [F]`  ->  `...`
+Executes `B`. If that yields true, then executes `T` else executes `F`.
 
 ### ifinteger      :  X [T] [E]  ->  ...
 If X is an integer, executes T else executes E.

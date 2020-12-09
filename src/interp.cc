@@ -493,7 +493,7 @@ PRIVATE void dupd_(pEC ec) {
   dipped(ec, "dupd", &hasTwoParams, &dup_);
 }
 PRIVATE void swapd_(pEC ec) {
-  dipped(ec, "swapd", &hasThreeParams, &swapd_);
+  dipped(ec, "swapd", &hasThreeParams, &swap_);
 }
 PRIVATE void rolldownd_(pEC ec) {
   dipped(ec, "rolldownd", &hasFourParams, &rolldown_);

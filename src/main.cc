@@ -190,12 +190,6 @@ PUBLIC void fail_(pEC ec)
     longjmp(ec->fail,1);
 }
 
-// PUBLIC void execerror(pEC ec, const char *message, const char *op)
-// {
-//     printf("run time error: %s needed for %s\n",message,op);
-//     abortexecution_(ec);
-// }
-
 PUBLIC void execerror(pEC ec, const char *message, const char *op, ...)
 {
   va_list arg_ptr;

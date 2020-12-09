@@ -1,0 +1,113 @@
+{
+  "main": {
+    "id": "35f257b6582b85e7",
+    "type": "split",
+    "children": [
+      {
+        "id": "ba291636b4dc05be",
+        "type": "leaf",
+        "active": true,
+        "state": {
+          "type": "markdown",
+          "state": {
+            "file": "LangRef/syntax.md",
+            "mode": "source"
+          }
+        },
+        "group": "e76385125efdf3b6"
+      },
+      {
+        "id": "1db1c6f19903614c",
+        "type": "leaf",
+        "state": {
+          "type": "markdown",
+          "state": {
+            "file": "LangRef/syntax.md",
+            "mode": "preview"
+          }
+        },
+        "group": "e76385125efdf3b6"
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "1c061c414e78747b",
+    "type": "split",
+    "children": [
+      {
+        "id": "e7609ead2bb362c4",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "7f0f6f4feac461f0",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {}
+            }
+          },
+          {
+            "id": "ff1afe9d9fb81c1d",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "fold",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 232
+  },
+  "right": {
+    "id": "3027c055edcdc6e3",
+    "type": "split",
+    "children": [
+      {
+        "id": "d9f26120a4c5b4cb",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "ad907494a96ee1e7",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "LangRef/syntax.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "lastOpenFiles": [
+    "LangRef/syntax.md",
+    "Developer/ExecutionContext.md",
+    "Developer/Structures.md",
+    "Developer/Untitled.md",
+    "Untitled.md",
+    "Index.md",
+    "LangRef/fx-operand.md",
+    "LangRef/functions.md",
+    "LangRef/fx-combinator.md",
+    "LibRef/inilib.md"
+  ]
+}

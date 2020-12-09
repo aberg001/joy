@@ -1,52 +1,52 @@
 
 # operand
 
-### false      :  ->  false
+### false      :  ->  `false`
 Pushes the value false.
 
-### true      :  ->  true
+### true      :  ->  `true`
 Pushes the value true.
 
-### maxint      :  ->  maxint
+### maxint      :  ->  `maxint`
 Pushes largest integer (platform dependent). Typically it is 32 bits.
 
-### setsize      :  ->  setsize
+### setsize      :  ->  `setsize`
 Pushes the maximum number of elements in a set (platform dependent).
 Typically it is 32, and set members are in the range 0..31.
 
-### stack      :  .. X Y Z  ->  .. X Y Z [Z Y X ..]
+### stack      :  `.. X Y Z ` ->  `.. X Y Z [Z Y X ..]`
 Pushes the stack as a list.
 
-### conts      :  ->  [[P] [Q] ..]
+### conts      :  ->  `[[P] [Q] ..]`
 Pushes current continuations. **Buggy, do not use.**
 
-### autoput      :  ->  I
+### autoput      :  ->  `I`
 Pushes current value of flag  for automatic output, I = 0..2.
 
-### undeferror      :  ->  I
+### undeferror      :  ->  `I`
 Pushes current value of undefined-is-error flag.
 
 ### undefs      :  ->
 Push a list of all undefined symbols in the current symbol table.
 
-### echo      :  ->  I
+### echo      :  ->  `I`
 Pushes value of echo flag, I = 0..3.
 
-### clock      :  ->  I
+### clock      :  ->  `I`
 Pushes the integer value of current CPU usage in hundreds of a second.
 
-### time      :  ->  I
+### time      :  ->  `I`
 Pushes the current time (in seconds since the Epoch).
 
-### rand      :    -> I
+### rand      :    -> `I`
 I is a random integer.
 
-### stdin      :  ->  S
+### stdin      :  ->  `S`
 Pushes the standard input stream.
 
-### stdout      :  ->  S
+### stdout      :  ->  `S`
 Pushes the standard output stream.
 
-### stderr      :  ->  S
+### stderr      :  ->  `S`
 Pushes the standard error stream.
 
