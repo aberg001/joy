@@ -66,12 +66,61 @@ PUBLIC void error(pEC ec, const char *message) {
   ec->scanner.errorcount++;
 }
 
+PRIVATE void getlibpath(pEC ec) {
+  const char *envvar = getenv("JOYLIB");
+  if (NULL == envvar) {
+    /* Default lib path */
+    const char *staticlibpath[3] = {"./lib", "/usr/joy/lib", NULL};
+    ec->libpath = static_cast<const char **>(malloc(3 * sizeof(char *)));
+    for (int i = 0; 1; i++) {
+      ec->libpath[i] = staticlibpath[i];
+      if (NULL == staticlibpath[i]) break;
+    }
+  } else {
+    char *value = strdup(envvar);
+    const int len = strlen(value);
+    const char *delim = ":";
+    int paths = 1;
+    for (int i = 0; i < len; i ++)
+      if (value[i] == ':') paths ++;
+    const char **libpath = static_cast<const char **>(malloc((paths + 1) * sizeof(char *)));
+    libpath[0] = strtok(value, delim);
+    for (int i = 1; i <= paths; i ++)
+      libpath[i] = strtok(NULL, delim);
+    libpath[paths] = NULL;
+    ec->libpath = libpath;
+  }
+}
+
+template<typename t> PRIVATE t max(t a, t b) {
+  if (a > b)
+    return a;
+  else
+    return b;
+}
+
 PUBLIC int doinclude(pEC ec, const char *filnam) {
   if (ec->scanner.ilevel+1 == INPSTACKMAX)
     execerror(ec, "fewer include files", "include");
   if ((ec->scanner.infile[ec->scanner.ilevel+1] = fopen(filnam,"r")) != NULL) {
     ec->scanner.ilevel++;
     return(1);
+  } else {
+    if (NULL == ec->libpath) {
+      getlibpath(ec);
+    }
+    int pathmax = 0;
+    for (int i = 0; NULL != ec->libpath[i]; i ++) {
+      pathmax = max<int>(pathmax, strlen(ec->libpath[i]));
+    }
+    char *testpath = static_cast<char *>(alloca(pathmax + strlen(filnam) + 1));
+    for (int i = 0; NULL != ec->libpath[i]; i ++) {
+      strcat(strcat(strcpy(testpath, ec->libpath[i]), "/"), filnam);
+      if ((ec->scanner.infile[ec->scanner.ilevel+1] = fopen(testpath,"r")) != NULL) {
+        ec->scanner.ilevel++;
+        return(1);
+      }
+    }
   }
   execerror(ec, "valid file name (%s)", "include", filnam);
   return 0;

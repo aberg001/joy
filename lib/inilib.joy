@@ -34,39 +34,39 @@ LIBRA
 (* date and time *)
 
     weekdays ==
-	[ "Monday" "Tuesday" "Wednesday" "Thursday" "Friday"
+        [ "Monday" "Tuesday" "Wednesday" "Thursday" "Friday"
           "Saturday" "Sunday" ];
     months ==
-	[ "JAN" "FEB" "MAR" "APR" "MAY" "JUN"
-	  "JUL" "AUG" "SEP" "OCT" "NOV" "DEC" ];
+        [ "JAN" "FEB" "MAR" "APR" "MAY" "JUN"
+        "JUL" "AUG" "SEP" "OCT" "NOV" "DEC" ];
     localtime-strings ==
-	time localtime
-	[ [ 0 at 'd 4 4 format			]
-	  [ 1 at pred months of			]
-	  [ 2 at 'd 2 2 format			]
-	  [ 3 at 'd 2 2 format			]
-	  [ 4 at 'd 2 2 format			]
-	  [ 5 at 'd 2 2 format			]
-	  [ 6 at [] ["true"] ["false"] ifte	]
-	  [ 7 at 'd 5 5 format			]
-	  [ 8 at pred weekdays of		] ]
-	[i] map
-	popd;
+        time localtime
+        [ [ 0 at 'd 4 4 format			]
+        [ 1 at pred months of			]
+        [ 2 at 'd 2 2 format			]
+        [ 3 at 'd 2 2 format			]
+        [ 4 at 'd 2 2 format			]
+        [ 5 at 'd 2 2 format			]
+        [ 6 at [] ["true"] ["false"] ifte	]
+        [ 7 at 'd 5 5 format			]
+        [ 8 at pred weekdays of		] ]
+        [i] map
+        popd;
     today ==
-	localtime-strings
-	[ [8 at] [" "] [2 at] ["-"] [1 at] ["-"] [0 at rest rest] ]
-	[i] map
-	popd
-	"" [concat] fold;
+        localtime-strings
+        [ [8 at] [" "] [2 at] ["-"] [1 at] ["-"] [0 at rest rest] ]
+        [i] map
+        popd
+        "" [concat] fold;
     now ==
-	localtime-strings
-	3 drop
-	[ [0 at] [":"] [1 at] [":"] [2 at] ]
-	[i] map
+        localtime-strings
+        3 drop
+        [ [0 at] [":"] [1 at] [":"] [2 at] ]
+        [i] map
 	popd
-	"" [concat] fold;
+        "" [concat] fold;
     show-todaynow ==
-	today putchars space now putchars newline;
+        today putchars space now putchars newline;
 
 (* program operators *)
 

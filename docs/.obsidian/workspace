@@ -10,7 +10,7 @@
         "state": {
           "type": "markdown",
           "state": {
-            "file": "LangRef/syntax.md",
+            "file": "roadmap.md",
             "mode": "source"
           }
         },
@@ -22,7 +22,7 @@
         "state": {
           "type": "markdown",
           "state": {
-            "file": "LangRef/syntax.md",
+            "file": "roadmap.md",
             "mode": "preview"
           }
         },
@@ -53,7 +53,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "fold",
+                "query": "getenv",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -82,7 +82,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "LangRef/syntax.md",
+                "file": "roadmap.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -99,15 +99,15 @@
     "collapsed": true
   },
   "lastOpenFiles": [
+    "roadmap.md",
     "LangRef/syntax.md",
+    "LangRef/fx-misc.md",
     "Developer/ExecutionContext.md",
     "Developer/Structures.md",
     "Developer/Untitled.md",
     "Untitled.md",
     "Index.md",
     "LangRef/fx-operand.md",
-    "LangRef/functions.md",
-    "LangRef/fx-combinator.md",
-    "LibRef/inilib.md"
+    "LangRef/functions.md"
   ]
 }

@@ -1,4 +1,6 @@
-objects = main.o interp.o scan.o utils.o
+sources = main.cc interp.cc scan.cc utils.cc
+#objects = main.o interp.o scan.o utils.o
+objects = $(addsuffix .o, $(basename $(sources)))
 CPPFLAGS += -ferror-limit=15 -std=c++17 -g -O0
 # --no-warnings  https://clang.llvm.org/docs/ClangCommandLineReference.html
 # -frelaxed-template-template-args

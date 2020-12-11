@@ -41,6 +41,9 @@ When that has finished, the process returns to Joy.
 ### getenv      :  `"variable"`  ->  `"value"`
 Retrieves the value of the environment variable "variable".
 
+### setenv      :  `"variable"  "value"`  ->  `I`
+Sets the value of the environment variable "variable".  Returns 0=success, error code otherwise.
+
 ### argv      :  -> `A`
 Creates an aggregate A containing the interpreter's command line arguments.
 

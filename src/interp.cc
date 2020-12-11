@@ -425,6 +425,14 @@ PRIVATE void getenv_(pEC ec) {
   unary<const char *>(ec, stringNewnode, getenv(ec->stk->u.str));
 }
 
+PRIVATE void setenv_(pEC ec) {
+  hasTwoParams(ec, "setenv");
+  hasString(ec, "setenv");
+  hasString2(ec, "setenv");
+  unary<long>(ec, &integerNewnode,
+              setenv(strdup(ec->stk->u.str), strdup(ec->stk->next->u.str), 1));
+}
+
 PRIVATE void body_(pEC ec) {
   hasOneParam(ec, "body");
   hasUserdef(ec, "body");
@@ -3541,6 +3549,9 @@ static struct {const char *name; void (*proc) (pEC ec); const char *messg1, *mes
 
 {"getenv",		getenv_,	"\"variable\"  ->  \"value\"",
 "Retrieves the value of the environment variable \"variable\"."},
+
+{"setenv",		setenv_,	"\"variable\" \"value\" -> I",
+"Sets the value of the environment variable \"variable\" to \"value\"."},
 
 {"argv",		argv_,		"-> A",
 "Creates an aggregate A containing the interpreter's command line arguments."},

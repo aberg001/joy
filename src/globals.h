@@ -103,6 +103,8 @@ struct ExecutionContext {
   FILE *srcfile;
   int g_argc;
   char **g_argv;
+  // char **g_envp;
+  const char **libpath;
   int echoflag;
   int autoput;
   int undeferror;
