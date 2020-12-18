@@ -283,38 +283,7 @@ PRIVATE const char *getString(pEC ec, pNode node) {
   return opername(ec, node->op);
 }
 
-// #define GETSTRING(NODE)						\
-//   ( NODE->op == STRING_  ?  NODE->u.str :			\
-//    (NODE->op == USR_  ?  NODE->u.ent->name :			\
-//     opername(ec, NODE->op) ) )
-
 /* - - - -  O P E R A N D S   - - - - */
-
-// #define PUSH(PROCEDURE,CONSTRUCTOR,VALUE)				\
-// PRIVATE void PROCEDURE(pEC ec)					\
-// {   NULLARY(CONSTRUCTOR,VALUE); }
-// PUSH(true_, BOOLEAN_NEWNODE, 1L)				/* constants	*/
-// PUSH(false_, BOOLEAN_NEWNODE, 0L)
-// PUSH(setsize_, INTEGER_NEWNODE, (long)SETSIZE)
-// PUSH(maxint_, INTEGER_NEWNODE, (long)MAXINT)
-// PUSH(symtabmax_, INTEGER_NEWNODE, (long)SYMTABMAX)
-// PUSH(memorymax_, INTEGER_NEWNODE, (long)MEMORYMAX)
-// PUSH(stdin_, FILE_NEWNODE, stdin)
-// PUSH(stdout_, FILE_NEWNODE, stdout)
-// PUSH(stderr_, FILE_NEWNODE, stderr)
-// PUSH(dump_, LIST_NEWNODE, ec->dump)				/* variables	*/
-// PUSH(conts_, LIST_NEWNODE, LIST_NEWNODE(ec->conts->u.lis->next, ec->conts->next))
-// PUSH(symtabindex_, INTEGER_NEWNODE, (long)LOC2INT(ec->symtabindex))
-// PUSH(rand_, INTEGER_NEWNODE, (long)rand())
-// /* this is now in utils.c
-// PUSH(memoryindex_, INTEGER_NEWNODE, MEM2INT(memoryindex))
-// */
-// PUSH(echo_, INTEGER_NEWNODE, (long)ec->echoflag)
-// PUSH(autoput_, INTEGER_NEWNODE, (long)ec->autoput)
-// PUSH(undeferror_, INTEGER_NEWNODE, (long)ec->undeferror)
-// PUSH(clock_, INTEGER_NEWNODE, (long)(clock() - ec->startclock))
-// PUSH(time_, INTEGER_NEWNODE, (long)time(NULL))
-// PUSH(argc_, INTEGER_NEWNODE, (long)ec->g_argc)
 
 PRIVATE void true_(pEC ec) {
   nullary<long>(ec, booleanNewnode, 1L);
@@ -365,7 +334,7 @@ PRIVATE void undeferror_(pEC ec) {
   nullary<long>(ec, integerNewnode, static_cast<long>(ec->undeferror));
 }
 PRIVATE void clock_(pEC ec) {
-  nullary<long>(ec, integerNewnode, static_cast<long>(ec->autoput));
+  nullary<long>(ec, integerNewnode, static_cast<long>(clock() - ec->startclock));
 }
 PRIVATE void time_(pEC ec) {
   nullary<long>(ec, integerNewnode, static_cast<long>(time(NULL)));
@@ -1776,20 +1745,6 @@ PRIVATE void system_(pEC ec) {
     system(ec->stk->u.str);
   });
 }
-
-#define USETOP(PROCEDURE,NAME,TYPE,BODY)			\
-    PRIVATE void PROCEDURE(pEC ec) {					\
-      hasOneParam(ec, NAME); TYPE(NAME); BODY; pop(ec->stk); }
-// USETOP( put_,"put",HASONEPARAM, writefactor(ec, ec->stk, stdout); printf(" "))
-// USETOP( putch_,"putch",NUMERICTYPE, printf("%c", (char) ec->stk->u.num) )
-// USETOP( putchars_,"putchars",STRING, printf("%s", ec->stk->u.str) )
-// USETOP( setecho_,"setecho",NUMERICTYPE, ec->echoflag = ec->stk->u.num )
-// USETOP( setautoput_,"setautoput",NUMERICTYPE, ec->autoput = ec->stk->u.num )
-// USETOP( setundeferror_, "setundeferror", NUMERICTYPE, ec->undeferror = ec->stk->u.num )
-// USETOP( settracegc_,"settracegc",NUMERICTYPE, ec->tracegc = ec->stk->u.num )
-// USETOP( srand_,"srand",INTEGER, srand((unsigned int) ec->stk->u.num) )
-// USETOP( include_,"include",STRING, doinclude(ec, ec->stk->u.str) )
-// USETOP( system_,"system",STRING, system(ec->stk->u.str) )
 
 PRIVATE void undefs_(pEC ec) {
   Entry *i = ec->symtabindex;

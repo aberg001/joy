@@ -6,6 +6,33 @@
 - [x] Write some documentation in Markdown.
 - [ ] Change 'include' to work with a search path `JOYPATH=./lib:/usr/joy/lib`
 - [ ] Figure out the test suite.
+    - [ ] [[grmtst]].joy
+    - [ ] [[jp-joytst]].joy
+    - [ ] [[laztst]].joy
+    - [ ] [[lsptst]].joy
+    - [ ] [[modtst]].joy
+    - [ ] [[mtrtst]].joy
+    - [ ] [[plgtst]].joy
+    - [ ] [[symtst]].joy
+    - [ ] [[test]].joy
+- [ ] Make sure all the libs load.
+    - [ ] [[agglib]].joy
+    - [ ] [[fraclib]].joy
+    - [ ] [[grmlib]].joy
+    - [ ] [[inilib]].joy
+    - [ ] [[jp-church]].joy
+    - [ ] [[jp-joyjoy]].joy
+    - [ ] [[jp-nestrec]].joy
+    - [ ] [[lazlib]].joy
+    - [ ] [[lsplib]].joy
+    - [ ] [[mthlib]].joy
+    - [ ] [[mtrlib]].joy
+    - [ ] [[numlib]].joy
+    - [ ] [[plglib]].joy
+    - [ ] [[seqlib]].joy
+    - [ ] [[symlib]].joy
+    - [ ] [[tutlib]].joy
+    - [ ] [[typlib]].joy
 - [ ] Break up interp.cc
     - [ ] Move math functions to a math.cc
     - [ ] Move file functions to a fileio.cc
