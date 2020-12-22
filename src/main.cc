@@ -9,8 +9,7 @@
 #define ALLOC
 #include "globals.h"
 
-PRIVATE void enterglobal(pEC ec)
-{
+PRIVATE void enterglobal(pEC ec) {
   ec->location = ec->symtabindex++;
 D(  printf("getsym, new: '%s'\n",ec->id); )
   char *new_location = static_cast<char *>(malloc(strlen(ec->id) + 1));
@@ -21,8 +20,8 @@ D(  printf("getsym, new: '%s'\n",ec->id); )
 D(  printf("entered %s at %ld\n",ec->id,LOC2INT(ec->location)); )
   ec->hashentry[ec->hashvalue] = ec->location;
 }
-PUBLIC void lookup(pEC ec)
-{
+
+PUBLIC void lookup(pEC ec) {
   int i;
 D(  printf("%s  hashes to %d\n",ec->id,ec->hashvalue); )
 
@@ -41,8 +40,7 @@ D(  printf("%s  hashes to %d\n",ec->id,ec->hashvalue); )
     enterglobal(ec);
 }
 
-PRIVATE void enteratom(pEC ec)
-{
+PRIVATE void enteratom(pEC ec) {
   if (ec->display_enter > 0) { 
     ec->location = ec->symtabindex++;
 D(	printf("hidden definition '%s' at %ld \n",ec->id,LOC2INT(ec->location)); )
@@ -60,8 +58,7 @@ D(	printf("hidden definition '%s' at %ld \n",ec->id,LOC2INT(ec->location)); )
 PRIVATE void defsequence(pEC);		/* forward */
 PRIVATE void compound_def(pEC);		/* forward */
 
-PRIVATE void definition(pEC ec)
-{
+PRIVATE void definition(pEC ec) {
   Entry *here = NULL;
   if (ec->sym == LIBRA || ec->sym == JPRIVATE || ec->sym == HIDE || ec->sym == MODULE) { 
     compound_def(ec);
@@ -102,8 +99,7 @@ D(  printf("\n"); )
   ec->stk = ec->stk->next;
 }
 
-PRIVATE void defsequence(pEC ec)
-{
+PRIVATE void defsequence(pEC ec) {
   definition(ec);
   while (ec->sym == SEMICOL) {
     getsym(ec);
@@ -111,8 +107,7 @@ PRIVATE void defsequence(pEC ec)
   }
 }
 
-PRIVATE void compound_def(pEC ec)
-{
+PRIVATE void compound_def(pEC ec) {
   switch (ec->sym) { 
     case MODULE : 
       { 
@@ -179,33 +174,31 @@ PRIVATE void compound_def(pEC ec)
   }
 }
 
-PUBLIC void abortexecution_(pEC ec)
-{
+PUBLIC void abortexecution_(pEC ec) {
     ec->conts = ec->dump = ec->dump1 = ec->dump2 = ec->dump3 = ec->dump4 = ec->dump5 = NULL;
     longjmp(ec->begin,0);
 }
 
-PUBLIC void fail_(pEC ec)
-{
+PUBLIC void fail_(pEC ec) {
     longjmp(ec->fail,1);
 }
 
-PUBLIC void execerror(pEC ec, const char *message, const char *op, ...)
-{
+PUBLIC void execerror(pEC ec, const char *message, const char *op, ...) {
   va_list arg_ptr;
   va_start(arg_ptr, op);
-  char * buf = static_cast<char *>(alloca(30 + strlen(message) + strlen(op)));
+  char * buf = static_cast<char *>(malloc(30 + strlen(message) + strlen(op)));
   sprintf(buf, "run time error: %s needed for %s",message,op);
   vprintf(buf, arg_ptr);
   printf("\n");
+  free(buf);
   abortexecution_(ec);
   va_end(arg_ptr);
 }
 
 static int quit_quiet = 1;
    /* was = 0;  but anything with "clock" needs revision */
-PUBLIC void quit_(pEC ec)
-{
+
+PUBLIC void quit_(pEC ec) {
     long totaltime;
     if (quit_quiet) exit(0);
     totaltime = clock() - ec->startclock;
@@ -218,6 +211,7 @@ PUBLIC void quit_(pEC ec)
 #endif
     exit(0);
 }
+
 static int mustinclude = 1;
 
 #define CHECK(D,NAME)						\
@@ -225,11 +219,10 @@ static int mustinclude = 1;
       { printf("->  %s is not empty:\n",NAME);			\
 	writeterm(ec, D, stdout); printf("\n"); }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   int ch;
-  ExecutionContext _ec;
-  pEC ec = &_ec;
+  // ExecutionContext _ec;
+  pEC ec = new ExecutionContext(); // &_ec;
 
   inimem0(ec);
   ec->g_argc = argc;
@@ -253,7 +246,7 @@ int main(int argc, char **argv)
 #else
     printf("JOY  -  compiled at %s on %s (NOBDW)\n",__TIME__,__DATE__);
 #endif
-    printf("Copyright 2001 by Manfred von Thun\n"); 
+    printf("Copyright 2020 by Andrew Berg, 2001 by Manfred von Thun\n"); 
   }
   ec->startclock = clock();
   ec->gc_clock = 0;

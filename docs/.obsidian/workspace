@@ -100,10 +100,10 @@
   },
   "lastOpenFiles": [
     "LangRef/syntax.md",
-    "Developer/ExecutionContext.md",
-    "Developer/Structures.md",
     "Developer/Untitled.md",
     "Untitled.md",
+    "Developer/Structures.md",
+    "Developer/ExecutionContext.md",
     "Index.md",
     "LangRef/fx-operand.md",
     "LangRef/functions.md",
