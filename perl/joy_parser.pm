@@ -57,7 +57,7 @@ sub error {
 sub _script {
   my $self = shift;
 
-  while (self->_sequence() or self->_atom() or self->_whitespace() or self->_comment()) {
+  while ($self->_sequence() or $self->_atom() or $self->_whitespace() or $self->_comment()) {
     1;
   }
 }
@@ -66,11 +66,11 @@ sub _sequence {
   my $self = shift;
 
   my $used = $self->{used};
-  return 0 unless $self->consume('[');
+  return 0 unless $self->_consume('[');
   unshift @{$self->{sequences}}, [];
   $self->_script();
   my $val = shift @{$self->{sequences}};
-  unless ($self->consume(']')) {
+  unless ($self->_consume(']')) {
     $self->{used} = $used;
     return 0;
   }
@@ -89,7 +89,7 @@ sub _number {
   # looks for a number and adds it to the current sequence.
   my $self = shift;
 
-  if (my $val = $self->match(qr(\d+(\.\d+)?))) {
+  if (my $val = $self->_match(qr(\d+(\.\d+)?))) {
     $self->_append(joy_types::number->new($val));
     return 1;
   }
@@ -100,7 +100,7 @@ sub _symbol {
   # looks for a symbol and adds it to the current sequence.
   my $self = shift;
 
-  if (my $val = $self->match(qr([\D\S]+))) {
+  if (my $val = $self->_match(qr([\D\S]+))) {
     $self->_append(joy_types::symbol->new([$val, $self->{symtab}{$val}]));
     return 1;
   }
@@ -111,7 +111,7 @@ sub _string {
   # looks for a string and adds it to the current sequence.
   my $self = shift;
 
-  if (my $val = $self->match(qr("[^"]*"))) {
+  if (my $val = $self->_match(qr("[^"]*"))) {
     $self->_append(joy_types::string->new($val));
     return 1;
   }
@@ -122,14 +122,14 @@ sub _whitespace {
   # looks for one or more whitespace characters and discards them.
   my $self = shift;
 
-  return $self->match(qr(\s+));
+  return $self->_match(qr(\s+));
 }
 
 sub _comment {
   # looks for a comment and discards it.
   my $self = shift;
 
-  return $self->match(qr(--.*\n));
+  return $self->_match(qr(--.*\n));
 }
 
 sub _append {
@@ -141,7 +141,7 @@ sub _append {
   push @{$self->{sequences}}, $val;
 }
 
-sub matchahead {
+sub _matchahead {
   # takes a regular expression, and if it matches against the current
   # point of the input returns true.
   my $self = shift;
@@ -151,7 +151,7 @@ sub matchahead {
   return scalar($rest =~ $re);
 }
 
-sub match {
+sub _match {
   # takes a regular expression, and if it matches against the current
   # point of the input it removes the match from the input and returns
   # it.  Returns false (empty string: '') otherwise.
@@ -161,11 +161,11 @@ sub match {
   my $rest = substr($self->{input}, $self->{used});
   return '' unless $rest =~ $re;
   my $result = substr($rest, $-[0], $+[0]-$-[0]);
-  $self->consume($result);
+  $self->_consume($result);
   return $result;
 }
 
-sub lookahead {
+sub _lookahead {
   # takes a string, returns true if it matches the current point.
   my $self = shift;
   my $str = shift;
@@ -173,7 +173,7 @@ sub lookahead {
   return $str eq substr($self->{input}, $self->{used}, $len);
 }
 
-sub consume { 
+sub _consume { 
   #  takes a string, and if it matches the current point of the input
   #  it removes it from the input.  Returns true if matched, false
   #  otherwise.

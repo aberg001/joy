@@ -38,14 +38,14 @@ sub parse {
   my $self = shift;
   my $text = shift;
 
-  print("parse…\n");
+  print("parse… [$text]\n");
   my $parser = joy_parser->new();
   if ($parser->parse($text, $self->{symbols})) {
     $self->{prog} = $parser->prog();
   } else {
     print("Parse error: $parser->error()\n");
   }
-  print("…parse\n");
+  print("…parse [$text]\n");
 }
 
 sub run {
