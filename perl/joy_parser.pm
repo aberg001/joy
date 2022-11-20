@@ -89,7 +89,7 @@ sub _number {
   # looks for a number and adds it to the current sequence.
   my $self = shift;
 
-  if (my $val = $self->_match(qr(\d+(\.\d+)?))) {
+  if (my $val = $self->_match(qr(^\d+(\.\d+)?))) {
     $self->_append(joy_types::number->new($val));
     return 1;
   }
@@ -100,7 +100,7 @@ sub _symbol {
   # looks for a symbol and adds it to the current sequence.
   my $self = shift;
 
-  if (my $val = $self->_match(qr([\D\S]+))) {
+  if (my $val = $self->_match(qr(^[^\d\s][^\s]+))) {
     $self->_append(joy_types::symbol->new([$val, $self->{symtab}{$val}]));
     return 1;
   }
@@ -111,7 +111,7 @@ sub _string {
   # looks for a string and adds it to the current sequence.
   my $self = shift;
 
-  if (my $val = $self->_match(qr("[^"]*"))) {
+  if (my $val = $self->_match(qr(^"[^"]*"))) {
     $self->_append(joy_types::string->new($val));
     return 1;
   }
