@@ -8,7 +8,8 @@ package joy_types::number;
 
 sub new {
   my $class = shift;
-  my $self = shift;
+  my $val = shift;
+  my $self = \$val;
   bless $self, $class;
   return $self;
 }
@@ -17,17 +18,38 @@ sub name {
   return 'number';
 }
 
+sub key {
+  return undef;
+}
+
+sub val {
+  my $self = shift;
+  return $$self;
+}
+
 package joy_types::symbol;
 
 sub new {
   my $class = shift;
-  my $self = shift;
+  my $key = shift;
+  my $val = shift;
+  my $self = [$key, $val];
   bless $self, $class;
   return $self;
 }
 
 sub name {
   return 'symbol';
+}
+
+sub key {
+  my $self = shift;
+  return $self->[0];
+}
+
+sub val {
+  my $self = shift;
+  return $self->[1];
 }
 
 package joy_types::string;
@@ -43,6 +65,15 @@ sub name {
   return 'string';
 }
 
+sub key {
+  return undef;
+}
+
+sub val {
+  my $self = shift;
+  return $$self;
+}
+
 package joy_types::sequence;
 
 sub new {
@@ -54,6 +85,15 @@ sub new {
 
 sub name {
   return 'sequence';
+}
+
+sub key {
+  return undef;
+}
+
+sub val {
+  my $self = shift;
+  return $self;
 }
 
 1;

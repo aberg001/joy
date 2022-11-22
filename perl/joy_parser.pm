@@ -56,14 +56,19 @@ sub error {
 
 sub _script {
   my $self = shift;
+  print "_script\n";
 
-  while ($self->_sequence() or $self->_atom() or $self->_whitespace() or $self->_comment()) {
-    1;
+  while ($self->_whitespace() or 
+         $self->_sequence() or 
+         $self->_atom() or 
+         $self->_comment()) {
+    print "_script looping\n";
   }
 }
 
 sub _sequence {
   my $self = shift;
+  print "_sequence\n";
 
   my $used = $self->{used};
   return 0 unless $self->_consume('[');
@@ -81,13 +86,18 @@ sub _sequence {
 sub _atom {
   # takes an atom from the input, and adds it to the current sequence.
   my $self = shift;
+  print "_atom\n";
 
-  return $self->_symbol() or $self->_number() or $self->_string();
+  return 1 if $self->_symbol();
+  return 1 if $self->_number();
+  return 1 if $self->_string();
+  return 0;
 }
 
 sub _number {
   # looks for a number and adds it to the current sequence.
   my $self = shift;
+  print "_number\n";
 
   if (my $val = $self->_match(qr(^\d+(\.\d+)?))) {
     $self->_append(joy_types::number->new($val));
@@ -101,15 +111,18 @@ sub _symbol {
   my $self = shift;
 
   if (my $val = $self->_match(qr(^[^\d\s][^\s]+))) {
-    $self->_append(joy_types::symbol->new([$val, $self->{symtab}{$val}]));
+    $self->_append(joy_types::symbol->new($val, $self->{symtab}{$val}));
+    print "_symbol:1\n";
     return 1;
   }
+  print "_symbol:0\n";
   return 0;
 }
 
 sub _string {
   # looks for a string and adds it to the current sequence.
   my $self = shift;
+  print "_string\n";
 
   if (my $val = $self->_match(qr(^"[^"]*"))) {
     $self->_append(joy_types::string->new($val));
@@ -121,15 +134,17 @@ sub _string {
 sub _whitespace {
   # looks for one or more whitespace characters and discards them.
   my $self = shift;
+  print "_whitespace\n";
 
-  return $self->_match(qr(\s+));
+  return length($self->_match(qr(^\s+)));
 }
 
 sub _comment {
   # looks for a comment and discards it.
   my $self = shift;
+  print "_comment\n";
 
-  return $self->_match(qr(--.*\n));
+  return $self->_match(qr(^--.*\n));
 }
 
 sub _append {
@@ -160,8 +175,9 @@ sub _match {
 
   my $rest = substr($self->{input}, $self->{used});
   return '' unless $rest =~ $re;
-  my $result = substr($rest, $-[0], $+[0]-$-[0]);
-  $self->_consume($result);
+  my $result = substr($rest, $-[0], $+[0] - $-[0]);
+  printf "match success, '%s' ('%s'+%d) +[%d] -[%d]\n", $result, $rest, $self->{used}, $+[0], $-[0];
+  $self->{used} += $_[0] - $-[0];
   return $result;
 }
 
