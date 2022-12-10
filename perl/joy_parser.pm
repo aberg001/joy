@@ -6,6 +6,34 @@ use Marpa::R2;
 
 use joy_types;
 
+my $dsl = <<'END_OF_DSL';
+:default ::= action => [name,values]
+:discard ~ whitespace
+
+lexeme default = latm => 1
+
+Script ::= Statement *
+Statement ::= 
+  Definition
+  | Function action => ::do_function
+Definition ::= Symbol '=' Function action => ::do_definition
+Function ::= Atom | Sequence
+Sequence ::= 
+  '[' Atoms ']'
+  | '[]' action => ::do_sequence
+Atoms ::= Atom*
+Atom ::= Number | Symbol | String | Sequence
+String ::= '"' NotDoubleQuotes '"'
+  | singleQuote NotSingleQuotes singleQuote
+NotDoubleQuotes ::= notDoubleQuote*
+NotSingleQuotes ::= notSingleQuote*
+
+whitespace ~ [\s]+
+notDoubleQuote ~ [^"]
+notSingleQuote ~ [^']
+singleQuote ~ [`]
+END_OF_DSL
+
 sub new {
   my $class = shift;
 
@@ -28,28 +56,9 @@ sub _init {
   $self->{symbols};
   $self->{result} = undef;
   $self->{error} = undef;
+  $self->{grammar} = Marpa::R2::Scanless::G->new( { source => \$dsl } );
 }
 
-my $dsl = <<'END_OF_DSL';
-:default ::= action => [name,values]
-lexeme default = latm => 1
-
-Script ::= Statement *
-Statement ::= 
-  Definition
-  | Function action => ::do_function
-Definition ::= Symbol '=' Function action => ::do_definition
-Function ::= Atom | Sequence
-Sequence ::= 
-  '[' Atoms ']' 
-  | '[' ']'
-Atoms ::= Atoms Atom | Atom | 
-Atom ::= Number | Symbol | String
-
-:discard ~ whitespace
-whitespace ~ [\s]+
-
-END_OF_DSL
 
 sub parse {
   my $self = shift;
