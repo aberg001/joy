@@ -14,6 +14,11 @@ sub new {
   return $self;
 }
 
+sub desc {
+  my $self = shift;
+  return "number<$$self>";
+}
+
 sub name {
   return 'number';
 }
@@ -36,6 +41,12 @@ sub new {
   my $self = [$key, $val];
   bless $self, $class;
   return $self;
+}
+
+sub desc {
+  my $self = shift;
+  my ($key, $val) = @$self;
+  return "symbol<$key,$val>";
 }
 
 sub name {
@@ -61,6 +72,11 @@ sub new {
   return $self;
 }
 
+sub desc {
+  my $self = shift;
+  return "string<'$self'>";
+}
+
 sub name {
   return 'string';
 }
@@ -81,6 +97,11 @@ sub new {
   my $self = shift;
   bless $self, $class;
   return $self;
+}
+
+sub desc {
+  my $self = shift;
+  return "sequence<...>";
 }
 
 sub name {
