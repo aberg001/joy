@@ -37,8 +37,9 @@ sub parse {
   $self->{input} = $text;
   $self->{used} = 0;
   $self->{symbols} = $symbols;
+  $self->{sequences} = [[]];
   $self->_script();
-  $self->{result} = $self->{sequences}[0];
+  $self->{result} = joy_types::sequence->new($self->{sequences}[0]);
   return not $self->{error};
 }
 
@@ -57,15 +58,16 @@ sub error {
 =pod
 EBNF-like Description
 
-script ::= { discard | funcall | definition } *
-funcall ::= discard { sequence | atom } discard
-definition ::= symbol '=' funcall + '.'
-sequence ::= whitespace '[' funcall + ']' whitespace
+script ::= { discard | statement } *
+statement ::= funcall | definition
+funcall ::= sequence | atom 
+definition ::= symbol discard '=' { discard | statement } + '.'
+sequence ::= '[' { discard | funcall } * ']'
 atom ::= symbol | number | string
-discard ::= comment | whitespace
+discard ::= whitespace | comment
 
-symbol ::= /[^\[\]"=.\d][^\[\]"=.]*/
-number ::= /\d+(.\d+)?/
+symbol ::= /[^\[\]"=.\d][^\[\]"=]*/
+number ::= /\d+(\.\d+)?/
 string ::= /"([^"]|"")*"/
 comment ::= /--.*?\n/
 whitespace ::= /[\s]*/
@@ -78,55 +80,82 @@ whitespace ::= /[\s]*/
 
 sub _script {
   my $self = shift;
-  say "_script";
 
-  while ($self->_whitespace() or 
-         $self->_comment()) {
-    say "_script looping";
-  }
+  say "_script.begin";
+  while ($self->_discard() or $self->_statement()) { }
+  say "_script.end";
+  return 1;
+}
+
+sub _statement {
+  my $self = shift;
+
+  return ($self->_funcall() or $self->_definition());
 }
 
 sub _funcall {
   my $self = shift;
-  say "_funcall";
-         $self->_sequence() or 
-         $self->_atom() or 
 
-  while 
+  return ($self->_sequence() or $self->_atom());
+}
+
+sub _definition {
+  my $self = shift;
+
+  say "_definition?";
+  my $used = $self->{used};
+  my $success = 0;
+  eval {
+    $self->_token() or die;
+    $self->_discard();
+    $self->_consume('=') or die;
+    $self->_discard() or $self->_statement() or die;
+    while ($self->_discard() or $self->_statement()) { }
+    $self->_consume('.') or die;
+    $success = 1;
+  };
+  say "_definition:$success";
+  $self->{used} = $used unless $success;
+  return $success;
 }
 
 sub _sequence {
   my $self = shift;
-  say "_sequence";
 
+  say "_sequence?";
   my $used = $self->{used};
-  return 0 unless $self->_consume('[');
-  unshift @{$self->{sequences}}, [];
-  $self->_script();
-  my $val = shift @{$self->{sequences}};
-  unless ($self->_consume(']')) {
-    $self->{used} = $used;
-    return 0;
-  }
-  $self->_append(joy_types::sequence->new($val));
-  return 1;
+  my $success = 0;
+  eval {
+    $self->_consume('[') or die;
+    my $val = [];
+    unshift @{$self->{sequences}}, $val;
+    while ($self->_discard() or $self->_funcall()) { }
+    shift @{$self->{sequences}};
+    $self->_consume(']') or die;
+    $self->_append(joy_types::sequence->new($val));
+    $success = 1;
+  };
+  say "_sequence:$success";
+  $self->{used} = $used unless $success;
+  return $success;
 }
 
 sub _atom {
   # takes an atom from the input, and adds it to the current sequence.
   my $self = shift;
-  say "_atom";
 
-  return 1 if $self->_symbol();
-  return 1 if $self->_number();
-  return 1 if $self->_string();
-  return 0;
+  return ($self->_symbol() or $self->_number() or $self->_string());
+}
+
+sub _discard {
+  my $self = shift;
+
+  return ($self->_whitespace() or $self->_comment());
 }
 
 sub _number {
   # looks for a number and adds it to the current sequence.
   my $self = shift;
-  say "_number?";
 
   if (my $val = $self->_match(qr(^\d+(\.\d+)?))) {
     $self->_append(joy_types::number->new($val));
@@ -140,21 +169,18 @@ sub _symbol {
   my $self = shift;
 
   say '_symbol?';
-  if (my $val = $self->_match(qr(^[^\d\s][^\s]*))) {
+  if (my $val = $self->_match(qr(^[^\d\s\[\]"=.][^\s\[\]=]*))) {
     $self->_append(joy_types::symbol->new($val, $self->{symtab}{$val}));
-    say "_symbol:1";
     return 1;
   }
-  say "_symbol:0";
   return 0;
 }
 
 sub _string {
   # looks for a string and adds it to the current sequence.
   my $self = shift;
-  say "_string";
 
-  if (my $val = $self->_match(qr(^"[^"]*"))) {
+  if (my $val = $self->_match(qr(^"([^"]|"")*"))) {
     $self->_append(joy_types::string->new($val));
     return 1;
   }
@@ -164,17 +190,15 @@ sub _string {
 sub _whitespace {
   # looks for one or more whitespace characters and discards them.
   my $self = shift;
-  say "_whitespace";
 
-  return length($self->_match(qr(^\s+)));
+  return $self->_match(qr(^\s+));
 }
 
 sub _comment {
   # looks for a comment and discards it.
   my $self = shift;
-  say "_comment";
 
-  return $self->_match(qr(^--.*\n));
+  return $self->_match(qr(^--.*?\n));
 }
 
 ## #################################
@@ -186,9 +210,9 @@ sub _append {
   # seuqence.
   my $self = shift;
   my $val = shift;
-  say "_append('".$val->desc()."')";
 
-  push @{$self->{sequences}}, $val;
+  say "_append('".$val->desc()."')";
+  push @{$self->{sequences}->[0]}, $val;
 }
 
 sub _matchahead {
@@ -235,7 +259,7 @@ sub _consume {
   
   my $init = substr($self->{input}, $self->{used}, $len);
   return 0 if $init ne $str;
-  $self->{used} -= $len;
+  $self->{used} += $len;
   return 1;
 }
 

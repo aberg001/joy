@@ -19,6 +19,12 @@ sub desc {
   return "number<$$self>";
 }
 
+sub print {
+  my $self = shift;
+  my $val = $$self;
+  print $val;
+}
+
 sub name {
   return 'number';
 }
@@ -49,6 +55,12 @@ sub desc {
   return "symbol<$key,$val>";
 }
 
+sub print {
+  my $self = shift;
+  my ($key, $val) = @$self;
+  print "$key";
+}
+
 sub name {
   return 'symbol';
 }
@@ -77,6 +89,14 @@ sub desc {
   return "string<'$self'>";
 }
 
+sub print {
+  my $self = shift;
+  my $str = $self;
+
+  $str =~ s/"/""/g;
+  print qq("$str");
+}
+
 sub name {
   return 'string';
 }
@@ -102,6 +122,17 @@ sub new {
 sub desc {
   my $self = shift;
   return "sequence<...>";
+}
+
+sub print {
+  my $self = shift;
+
+  print '[ ';
+  for my $e (@$self) {
+    $e->print();
+    print ' ';
+  }
+  print '] ';
 }
 
 sub name {
