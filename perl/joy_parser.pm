@@ -59,7 +59,7 @@ sub error {
 EBNF-like Description
 
 script ::= { discard | statement } *
-statement ::= funcall | definition
+statement ::= definition | funcall
 funcall ::= sequence | atom 
 definition ::= symbol discard '=' { discard | statement } + '.'
 sequence ::= '[' { discard | funcall } * ']'
@@ -90,7 +90,7 @@ sub _script {
 sub _statement {
   my $self = shift;
 
-  return ($self->_funcall() or $self->_definition());
+  return ($self->_definition() or $self->_funcall());
 }
 
 sub _funcall {
@@ -102,27 +102,31 @@ sub _funcall {
 sub _definition {
   my $self = shift;
 
-  say "_definition?";
   my $used = $self->{used};
   my $success = 0;
   eval {
-    $self->_token() or die;
+    my $parsed = [];
+    unshift @{$self->{sequences}}, $parsed;
+    my $symbol = $self->_symbol() or die;
     $self->_discard();
     $self->_consume('=') or die;
     $self->_discard() or $self->_statement() or die;
     while ($self->_discard() or $self->_statement()) { }
     $self->_consume('.') or die;
+    shift @{$self->{sequences}};
+    my $tok = shift @$parsed;
+    my @seq = $parsed;
+    my $seqlen = scalar @seq;
     $success = 1;
   };
-  say "_definition:$success";
   $self->{used} = $used unless $success;
+  shift @{$self->{sequences}} unless $success;
   return $success;
 }
 
 sub _sequence {
   my $self = shift;
 
-  say "_sequence?";
   my $used = $self->{used};
   my $success = 0;
   eval {
@@ -130,13 +134,13 @@ sub _sequence {
     my $val = [];
     unshift @{$self->{sequences}}, $val;
     while ($self->_discard() or $self->_funcall()) { }
-    shift @{$self->{sequences}};
     $self->_consume(']') or die;
+    shift @{$self->{sequences}};
     $self->_append(joy_types::sequence->new($val));
     $success = 1;
   };
-  say "_sequence:$success";
   $self->{used} = $used unless $success;
+  shift @{$self->{sequence}} unless $success;
   return $success;
 }
 
