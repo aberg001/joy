@@ -18,10 +18,26 @@ sub _init {
   my $self = shift;
 
   $self->{namespaces} = {};
-  $self->{current} = $self->get('');
+  $self->{root} = $self->named_namespace('JOY');
+  $self->{current} = $self->named_namespace('USER');
+  $self->{contexts} = [ $self->{root} ];
 }
 
-sub get_namespace {
+sub enter_namespace {
+  my $self = shift;
+  my $name = shift;
+
+  push @{$self->{contexts}}, $self->{current};
+  $self->{current} = $self->named_namespace($name);
+}
+
+sub exit_namespace {
+  my $self = shift;
+
+  $self->{current} = pop @{$self->{contexts}};
+}
+
+sub named_namespace {
   my $self = shift;
   my $name = shift;
 
@@ -34,19 +50,41 @@ sub get_namespace {
   return $self->{namespaces}->{$name};
 }
 
+sub current_namespace {
+  my $self = shift;
+
+  return $self->{current};
+}
+
 sub get_symbol {
   my $self = shift;
   my $name = shift;
 
-  my ($namespace, $symbol) = $self->_split($name);
-  
+  my $namespace;
+  my ($ns, $sym) = $self->_split($name);
+  if (defined $ns) {
+    $namespace = $self->named_namespace($ns);
+  } else {
+    $namespace = $self->current_namespace();
+  }
+  return $namespace->get_symbol($sym);
+}
+
+sub set_symbol {
+  my $self = shift;
+  my $name = shift;
+  my $val = shift;
+
+  my $sym = $self->get_symbol($name);
+  return 0 if $sym->val();
+  $sym->set($val)
 }
 
 sub _split {
   my $self = shift;
   my $name = shift;
 
-  my @res = $name =~ /(.+):(.+)/;
+  my @res = $name =~ /^(.+):(.+)$/;
   return @res if @res;
   return (undef, $name);
 }

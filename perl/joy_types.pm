@@ -129,13 +129,12 @@ sub desc {
   return "sequence<...>";
 }
 
-sub print {
-  print '[ ';
+sub toStr {
+  my $result = '[ ';
   for my $e (@{$_[0]}) {
-    $e->print();
-    print ' ';
+    $result .= $e->toStr() . ' ';
   }
-  print '] ';
+  $result .= ']';
 }
 
 sub key {
@@ -145,6 +144,43 @@ sub key {
 sub val {
   my $self = shift;
   return $self;
+}
+
+# ========================================================================
+package joy_types::primitive;
+use parent 'joy_types';
+
+sub new {
+  my $class = shift;
+  my $name = shift;
+  my $fn = shift;
+
+  my $self = [$name, $fn];
+  bless $self, $class;
+  return $self;
+}
+
+sub name {
+  return 'primitive';
+}
+
+sub toStr {
+  return $_[0]->[0];
+}
+
+sub val {
+  return '<fn>';
+}
+
+sub eval {
+  my ($self, $stack) = @_;
+  my ($name, $fn) = @$self;
+
+  $fn->($stack);
+}
+
+sub key {
+  return $_[0]->[0];
 }
 
 1;

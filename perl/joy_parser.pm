@@ -3,6 +3,7 @@ package joy_parser;
 use v5.24.1;
 use lib ".";
 use joy_types;
+use joy_symtab;
 
 sub new {
   my $class = shift;
@@ -105,8 +106,8 @@ sub _definition {
   my $used = $self->{used};
   my $success = 0;
   eval {
-    my $parsed = [];
-    unshift @{$self->{sequences}}, $parsed;
+    my @seq = ();
+    unshift @{$self->{sequences}}, \@seq;
     my $symbol = $self->_symbol() or die;
     $self->_discard();
     $self->_consume('=') or die;
@@ -114,9 +115,8 @@ sub _definition {
     while ($self->_discard() or $self->_statement()) { }
     $self->_consume('.') or die;
     shift @{$self->{sequences}};
-    my $tok = shift @$parsed;
-    my @seq = $parsed;
-    my $seqlen = scalar @seq;
+    my $name = shift @seq;
+    $self->{namespace}->set_symbol($name, \@seq) or die;
     $success = 1;
   };
   $self->{used} = $used unless $success;
@@ -174,7 +174,7 @@ sub _symbol {
 
   say '_symbol?';
   if (my $val = $self->_match(qr(^[^\d\s\[\]"=.][^\s\[\]=]*))) {
-    $self->_append(joy_types::symbol->new($val, $self->{symtab}{$val}));
+    $self->_append(joy_types::symbol->new($val, $self->{symtab}->get_symbol($val)));
     return 1;
   }
   return 0;
