@@ -28,7 +28,7 @@ sub enter_namespace {
   my $name = shift;
 
   push @{$self->{contexts}}, $self->{current};
-  $self->{current} = $self->named_namespace($name);
+  $self->change_namespace($name);
 }
 
 sub exit_namespace {
@@ -37,17 +37,23 @@ sub exit_namespace {
   $self->{current} = pop @{$self->{contexts}};
 }
 
+sub change_namespace {
+  my $self = shift;
+  my $name = shift;
+
+  $self->{current} = $self->named_namespace($name);
+}
+
 sub named_namespace {
   my $self = shift;
   my $name = shift;
 
-  unless (exists $self->{namespaces}) {
-    my $new = joy_namespace->new();
-    $self->{namespaces}->{$name} = $new;
-    return $new;
-  }
+  return $self->{namespaces}->{$name} if exists $self->{namespaces}->{$name};
 
-  return $self->{namespaces}->{$name};
+  my $new = joy_namespace->new();
+  $self->{namespaces}->{$name} = $new;
+  return $new;
+
 }
 
 sub current_namespace {
@@ -67,7 +73,7 @@ sub get_symbol {
   } else {
     $namespace = $self->current_namespace();
   }
-  return $namespace->get_symbol($sym);
+  return $namespace->get($sym);
 }
 
 sub set_symbol {
@@ -119,6 +125,17 @@ sub get {
   }
 
   return $self->{symbols}->{$name};
+}
+
+sub set {
+  my $self = shift;
+  my $name = shift;
+  my $val = shift;
+
+  return undef if exists $self->{symbols}->{$name};
+  my $new = joy_symbol->new($name);
+  $new->set($val);
+  return $new;
 }
 
 package joy_symbol;

@@ -13,6 +13,7 @@ my $j = joy->new();
 # my $r = $j->parse(q(1 [2 3 +] +));
 my $r = $j->parse(q(foo = 1 [2 3 +] + .));
 say 'result: ', $r;
+$j->run();
 $j->print();
 
 exit 1;

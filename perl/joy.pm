@@ -3,6 +3,9 @@ package joy;
 use v5.24.1;
 use lib ".";
 use joy_parser;
+use joy_types;
+use joy_symtab;
+use joy_function;
 
 sub new {
   my $class = shift;
@@ -68,9 +71,9 @@ sub run {
 sub _init {
   my $self = shift;
 
-  $self->{symbols} = {};
+  $self->{symbols} = joy_symtab->new();
   $self->{prog} = undef;
-  $self->{stack} = [];
+  $self->{stack} = joy_types::sequence->new();
   $self->{step} = undef;
 
   $self->_init_fns()
@@ -79,12 +82,14 @@ sub _init {
 sub _init_fns {
   ## The symbols is a map from 'symbol' => [\'symbol', «joy_types::sequence | perl fn ref»].
   my $self = shift;
-  my $fns = $self->{symbols};
+  my $root_namespace = $self->{symbols}->named_namespace('root');
+  joy_function::init_fns($root_namespace);
 }
 
 sub _eval {
   my $self = shift;
   print("eval…\n");
+  
   print("…eval\n");
 }
 

@@ -24,7 +24,7 @@ sub _init {
   $self->{input} = '';
   $self->{used} = 0;
   $self->{sequences} = [[]];
-  $self->{symbols};
+  $self->{symtab} = $options->{symtab} // joy_symtab->new();
   $self->{result} = undef;
   $self->{error} = undef;
 }

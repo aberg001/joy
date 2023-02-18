@@ -114,9 +114,12 @@ sub val {
 package joy_types::sequence;
 use parent 'joy_types';
 
+# A joy_types::sequence is just an arrayref, so it is fair to use
+# any of the normal perlish array operations on it.
+
 sub new {
   my $class = shift;
-  my $self = shift;
+  my $self = shift // [];
   bless $self, $class;
   return $self;
 }
